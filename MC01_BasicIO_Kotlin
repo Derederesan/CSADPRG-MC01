@@ -1,5 +1,223 @@
-********************
+/********************
 Last names: Ilagan, Serios, Yardan
 Language: Kotlin
-Paradigm(s):
-********************
+Paradigm(s): Procedural
+********************/
+
+/**
+ * REQ-0001 Provision to display main navigation menu to standard console output
+ * REQ-0002 Provision to prompt and capture user selection (1–6).
+ * REQ-0003 Provision to output feedback confirming selected menu choice
+ */
+fun mainMenu(): Int{
+    var choice: Int
+    print(
+        message = "Select Transaction:\n" +
+                "[1] Register Account Name\n" +
+                "[2] Deposit Amount\n" +
+                "[3] Withdraw Amount\n" +
+                "[4] Currency Exchange\n" +
+                "[5] Record Exchange Rates\n" +
+                "[6] Show Interest Amount\n" +
+                "Choice:"
+    )
+
+    choice = promptOption()
+    print("\n***\nChoice = $choice\n")
+    return choice
+}
+
+/**
+ * Helper function promptName to reduce code duplications
+ * This checks if the Account Name input does not consist of numbers.
+ * Additionally, this function trims and checks for whitespaces.
+ */
+fun promptName() : String {
+    var name = ""
+    while (name.isEmpty()) {
+        try {
+            print("Account Name: ")
+            name = readln().trim()
+
+            if(name.isBlank()) throw IllegalArgumentException()
+
+            for(i in 0 until name.length)
+                if(name[i].isDigit()) throw IllegalArgumentException()
+
+        }catch (e : IllegalArgumentException){
+            name = ""
+            println("Enter a valid account name: ")
+        }
+    }
+    return name
+}
+
+/**
+ * Helper Function promptOption
+ * This checks if a choice is a number and between 1 and 6
+ */
+fun promptOption(): Int {
+    var choice = 0
+    while(!(choice in 1..6)) {
+        try {
+            choice = readln().trim().toInt()
+            if(!(choice in 1..6)) {
+                println("Invalid! Number must be between 1 and 6. ")
+            }
+        }
+        catch (e: NumberFormatException) {
+            println("Invalid! Enter a valid number.")
+        }
+    }
+    return choice
+}
+
+/**
+ * Helper Function promptFloat
+ * Checks whether the input is a valid float and non-negative.
+ */
+fun promptFloat() : Float {
+    var floatAmt = -1F
+    while(floatAmt < 0) {
+        try {
+            floatAmt = readln().trim().toFloat()
+            if(floatAmt < 0)
+                print("Invalid input!\n")
+        } catch (e: NumberFormatException) {
+            println("Invalid! Enter a valid float.\n")
+        }
+    }
+    return floatAmt
+}
+
+/**
+ * REQ-0004 Provision to display prompt for transaction Register Account Name to standard console output.
+ * REQ-0005 Provision to prompt and capture account name.
+ * REQ-0006 Provision to display the captured account name.
+ */
+fun registerAccount () : String {
+    var accountName: String
+    print("\nRegister Account Name\n")
+    accountName = promptName()
+    print("\n***\n" +
+            "Account Name = $accountName\n")
+    return accountName
+}
+
+/**
+ * REQ-0007 Provision to display prompt for transaction Deposit Amount to
+ * standard console output
+ * REQ-0008 Provision to capture the account name and deposit amount.
+ * REQ-0009 Provision to display the following default values:
+ * ● Current balance = 1000
+ * ● Currency = PHP
+ * REQ-0010 Provision to display the captured account name and deposit amount.
+ */
+fun depositAmt() : Float {
+    var accountName: String
+    var depositAmount: Float
+
+    print("\nDeposit Amount\n")
+    accountName = promptName()
+    println("Current Balance: 1000\n" +
+            "Currency: PHP\n")
+
+    print("Deposit Amount: ")
+    depositAmount = promptFloat()
+
+    println("\n***\n" +
+            "Account Name = $accountName\n" +
+            String.format("Deposit Amount = %.2f", depositAmount))
+
+    return depositAmount
+}
+
+/**
+ * REQ-0011 Provision to display prompt for transaction Withdraw Amount to
+ * standard console output
+ * REQ-0012 Provision to capture the account name and withdraw amount.
+ * REQ-0013 Provision to display the following default values:
+ * ● Current balance = 1000
+ * ● Currency = PHP
+ * REQ-0014 Provision to display the captured account name and withdraw
+ * amount.
+ */
+
+fun withdrawAmt() : Float {
+    var accountName: String
+    var withdrawAmount: Float
+
+    print("\nWithdraw Amount\n")
+    accountName = promptName()
+    println("Current Balance: 1000\n" +
+            "Currency: PHP\n")
+    print("Withdraw Amount: ")
+    withdrawAmount = promptFloat()
+
+    println("\n***\n" +
+            "Account Name = $accountName\n" +
+            String.format("Withdraw Amount = %.2f", withdrawAmount))
+
+    return withdrawAmount
+}
+
+/**
+ * REQ-0015 Provision to display the menu for Record Exchange Rate to
+ * standard console output
+ * REQ-0016 Provision to capture the selected foreign currency name and
+ * exchange rate.
+ * REQ-0017 Provision to display the selected foreign currency name and
+ * recorded exchange rate.
+ */
+fun recordExRate() : Float {
+    var nOption: Int
+    var fRate: Float
+    print("\nRecord Exchange Rate\n" +
+            "\n[1] Philippine Peso (PHP)\n" +
+            "[2] United States Dollar (USD)\n" +
+            "[3] Japanese Yen (JPY)\n" +
+            "[4] British Pound Sterling (GBP)\n" +
+            "[5] Euro (EUR)\n" +
+            "[6] Chinese Yuan Renminni (CNY)\n" +
+
+            "\nSelect Foreign Currency: ")
+    nOption = promptOption()
+    print("Exchange Rate: ")
+    fRate = promptFloat()
+
+    println()
+    println("\n***\n" +
+          "Select Foreign Currency = [$nOption]\n" +
+           String.format("Exchange Rate = %.2f\n", fRate))
+
+    return fRate
+}
+
+fun curExchange() : Float{
+    var srcAmtPeso : Float
+    print("\nForeign Currency Exchange\n" +
+            "Source Amount (PHP): ")
+    srcAmtPeso = promptFloat()
+
+    print("\nExchanged Currency\n")
+    print(String.format("[1] Philippine Peso (PHP) = %.2f\n", srcAmtPeso) +
+          String.format("[2] United States Dollar (USD) = %.2f\n", srcAmtPeso * 62.00) +
+          String.format("[3] Japanese Yen (JPY) = %.2f\n", srcAmtPeso * 0.40) +
+          String.format("[4] British Pound Sterling (GBP) = %.2f\n", srcAmtPeso * 84.00) +
+          String.format("[5] Euro (EUR) = %.2f\n", srcAmtPeso * 72.00) +
+          String.format("[6] Chinese Yuan Renminni (CNY) = %.2f\n", srcAmtPeso * 9.00))
+
+    print("\n***\n" +
+          "Source Currency = Philippine Peso (PHP)\n" +
+          String.format("Source Amount (PHP) = %.2f\n", srcAmtPeso))
+    return srcAmtPeso
+}
+
+fun main() {
+    mainMenu()
+    registerAccount()
+    depositAmt()
+    withdrawAmt()
+    recordExRate()
+    curExchange()
+}
