@@ -20,10 +20,11 @@ void cleanInputBuffer(){
 }
 
 /**
- * @brief Prints a purely visual guide on the menu navigation.
+ * @brief Prints a purely visual guide on the menu navigation. 
  * 
  * @warning Includes a double newline at the end of its printing.
  */
+
 
 void printNavMenu(){
 	printf("Select Transaction:\n");
@@ -60,19 +61,18 @@ void printExchangeMenu(){
  * @warning Includes a double newline at the end of its printing.
  */
 
-void printExchangedCurrencyMenu(double *globalCurrency){
+void printExchangedCurrencyMenu(double source){
 	printf("Exchanged Currency\n\n");
-	printf("[1] Philippine Peso (PHP) = %.2lf\n", *(globalCurrency + 0));
-	printf("[2] United States Dollar (USD) = %.2lf\n", *(globalCurrency + 1));
-	printf("[3] Japanese Yen (JPY)= %.2lf\n", *(globalCurrency + 2));
-	printf("[4] British Pound Sterling (GBP)= %.2lf\n", *(globalCurrency + 3));
-	printf("[5] Euro (EUR) = %.2lf\n", *(globalCurrency + 4));
-	printf("[6] Chinese Yuan Renminni (CNY)= %.2lf\n", *(globalCurrency + 5));
-	printf("[0] Exit Exchange\n\n");
+	printf("[1] Philippine Peso (PHP) = %.2lf\n", source * 1.00);
+	printf("[2] United States Dollar (USD) = %.2lf\n", source * 62.00);
+	printf("[3] Japanese Yen (JPY)= %.2lf\n", source * 0.40);
+	printf("[4] British Pound Sterling (GBP)= %.2lf\n", source * 84.00);
+	printf("[5] Euro (EUR) = %.2lf\n", source * 72.00);
+	printf("[6] Chinese Yuan Renminni (CNY)= %.2lf\n", source * 9.00);
 }
 
 /**
- * @brief 	Prints lines to guide UI, then takes an integer input value, accepting only values in a strict range. 
+ * @brief 	Prints lines to guide UI, then takes an integer input value, accepting only values in a strict range. [REQ-0002], [REQ-0003]
  * 
  * @pre 	Standard input stream must be available.
  * @warning Currently only supports integer-based console inputs through in_stream.
@@ -165,8 +165,9 @@ double getValidAmount(){
 /**
  * @brief 	Cleanly takes a valid string input value, accepting only strings up to a defined max length.
  * 
- * @pre 	The max length must be defined.
- * @warning Lacks strict error handling in case of inputs larger than the maximum length due to scanf properties.
+ * @pre 		The max length must be defined.
+ * @warning 	Uses a scanf formatting to specify all leftover newlines are ignored, and 
+ *              then to capture everything until next newline.
  *
  * @param[out]    nameBuffer  String to be modified according to the user's input.
  * @param[in]     maxLen  	  Maximum length that can be given to nameBuffer.
@@ -176,7 +177,7 @@ void getValidName(char *nameBuffer, int maxLen){
     int validFlag = 0;
     int nameLength = -1;
     while(!validFlag){
-        if(scanf("%100s", nameBuffer) == 1){
+        if(scanf(" %100[^\n]", nameBuffer) == 1){
             nameLength = strlen(nameBuffer);
             if(nameLength > 0 && nameLength < maxLen){
                 validFlag = 1; 
@@ -187,7 +188,7 @@ void getValidName(char *nameBuffer, int maxLen){
 }
 
 /**
- * @brief 	Prints the prompt for the user to register account name details.
+ * @brief 	Prints the prompt for the user to register account name details. [REQ-0004], [REQ-0005], [REQ-0006]
  *
  * @param[out]    accountName  String to be modified according to the user's input.
  */
@@ -201,7 +202,7 @@ void registerAccountName(char *accountName){
 }
 
 /**
- * @brief 	Prints the prompt for the user to deposit balance from their account.
+ * @brief 	Prints the prompt for the user to deposit balance from their account. [REQ-0008], [REQ-0009] [REQ-0010]
  *
  * @param[in]     accountName  Represents the user's account.
  * @param[out]    balance      The value of the user's balance that is to be modified.
@@ -217,14 +218,14 @@ void depositAmount(char *accountName, double *balance){
 	printf("Currency: PHP\n");
 	printf("\nDeposit Amount: ");
 	valDeposit = getValidAmount();
-	*balance -= valDeposit;
+	*balance += valDeposit;
 	printf("\n***\n");
 	printf("Account Name = %s\n", accountName);	
 	printf("Deposit Amount = %.2lf\n", valDeposit);
 }
 
 /**
- * @brief 	Prints the prompt for the user to withdraw balance from their account.
+ * @brief 	Prints the prompt for the user to withdraw balance from their account. [REQ-0012], [REQ-0013], [REQ-0014]
  *
  * @param[in]     accountName  Represents the user's account.
  * @param[out]    balance      The value of the user's balance that is to be modified.
@@ -240,55 +241,69 @@ void withdrawAmount(char *accountName, double *balance){
 	printf("Currency: PHP\n");
 	printf("\nWithdraw Amount: ");
 	valWithdraw = getValidAmount();
-	*balance += valWithdraw;
+	*balance -= valWithdraw;
 	printf("\n***\n");
 	printf("Account Name = %s\n", accountName);	
 	printf("Withdraw Amount = %.2lf\n", valWithdraw);
 }
 
-void currencyExchange(double *globalCurrency){
-	printExchangedCurrencyMenu(globalCurrency);
+/**
+ * @brief 	Prompts a user for a source amount, then exchanges it to other currency equivalencies. [REQ-0019], [REQ-0020]
+ *
+ * @warning  The exchange values are hardcoded in function printExchangedCurrencyMenu.
+ *
+ * @post  Prints the exchange equivalency according to the hardcoded exchange values.
+ */
+
+void currencyExchange(){
+	double source = 0.0;
+	printf("Foreign Currency Exchange\n");
+	printf("Source Amount (PHP): ");
+	source = getValidAmount();
+	printExchangedCurrencyMenu(source);
+	printf("\n***\n");
+    printf("Source Currency = Philippine Peso (PHP)\n");
+    printf("Source Amount (PHP) = %.2lf\n\n", source);	
 }
 
 /**
- * @brief Records the user's input for a global currency's exchange value.
+ * @brief Records the user's input for a global currency's exchange value. [REQ-0016], [REQ-0017]
  * 
  */
 
-void recordExchangeRates(double *globalCurrency){
-	int validFlag = 0;
-	int choice = -1;
-	double currency = 0;
-	
-	while(!validFlag){
-		printExchangeMenu();
-		printf("Select Foreign Currency: ");
-		
-		choice = getValidChoiceClean(0,6);
-		if(choice){
-			printf("Exchange Rate: ");
-			currency = getValidAmount();
-			printf("\n***\n");
-			printf("Select Foreign Currency = [%d]\n", choice);
-			printf("Exchange Rate = %.2lf\n", currency);
-			globalCurrency[choice-1] = currency;
-			validFlag = 1;
-		} else {
-			validFlag = 1;
-		}
-	}
+void recordExchangeRates(){
+    int choice = -1;
+    double currency = 0.0;
+    
+    printExchangeMenu();
+    printf("Select Foreign Currency: ");
+    
+    choice = getValidChoiceClean(0,6);
+    if(choice){
+        printf("Exchange Rate: ");
+        currency = getValidAmount();
+        
+        printf("\n***\n");
+        printf("Select Foreign Currency = [%d]\n", choice);
+        printf("Exchange Rate = %.2lf\n", currency);
+    }
 }
+
+/**
+ * @brief NOT IMPLEMENTED YET
+ * 
+ */
 
 void showInterestAmount(){
 	
 }
 
 /**
- * @brief Traversal function to guide the user to different transaction selections.
+ * @brief Traversal function to guide the user to different transaction selections. [REQ-0004], [REQ-0007], [REQ-0011], [REQ-0015], [REQ-0018]
  * 
  */
  
-void transactionSelect(int choice, char *accountName, double *balance, double *globalCurrency){
+void transactionSelect(int choice, char *accountName, double *balance){
 	switch(choice){
 		case 1:
 			registerAccountName(accountName);
@@ -300,10 +315,10 @@ void transactionSelect(int choice, char *accountName, double *balance, double *g
 			withdrawAmount(accountName, balance);
 			break;
 		case 4:
-			currencyExchange(globalCurrency);
+			currencyExchange();
 			break;
 		case 5:
-			recordExchangeRates(globalCurrency);
+			recordExchangeRates();
 			break;
 		case 6:
 			showInterestAmount();
@@ -314,18 +329,23 @@ void transactionSelect(int choice, char *accountName, double *balance, double *g
 	}
 }
  
+/**
+ * @brief Main program loop, constantly checks for user's valid input to navigate menu. [REQ-0002], [REQ-0003]
+ * 
+ */ 
+ 
 int main(){
 	char accountName[MAX_NAME_LEN + 1] = {0};
 	int runningFlag = 1;
 	int choice = -1;
 	double balance = 1000.00;
-	double globalCurrency[6] = {0};
+	// double globalCurrency[6] = {0};
 	
 	while(runningFlag){
 		printNavMenu();
 		choice = getValidChoice(0, 6);
 		if (choice){
-			transactionSelect(choice, accountName, &balance, globalCurrency);
+			transactionSelect(choice, accountName, &balance);
 		} else {
 			runningFlag = 0;
 		}
@@ -333,3 +353,4 @@ int main(){
 	printf("Exiting..\n");
 	return 0;
 }
+
