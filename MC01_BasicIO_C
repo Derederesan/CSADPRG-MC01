@@ -1,5 +1,335 @@
-********************
+#include <stdio.h>
+#include <string.h>
+#include "banking_exchange.h"
+
+/********************
 Last names: Ilagan, Serios, Yardan
 Language: C
-Paradigm(s):
-********************
+Paradigm(s): Procedural
+********************/
+
+/**
+ * @brief Cleans retained string data in memory.
+ *
+ * @post The input buffer is cleaned for next scanf input.
+ */
+
+void cleanInputBuffer(){
+	int c;
+	while ((c = getchar()) != '\n' && c != EOF);
+}
+
+/**
+ * @brief Prints a purely visual guide on the menu navigation.
+ * 
+ * @warning Includes a double newline at the end of its printing.
+ */
+
+void printNavMenu(){
+	printf("Select Transaction:\n");
+	printf("[1] Register Account Name\n");
+	printf("[2] Deposit Amount\n");
+	printf("[3] Withdraw Amount\n");
+	printf("[4] Currency Exchange\n");
+	printf("[5] Record Exchange Rates\n");
+	printf("[6] Show Interest Amount\n");
+	printf("[0] Exit Transaction\n\n");
+}
+
+/**
+ * @brief Prints a purely visual guide on the different exchange currencies.
+ * 
+ * @warning Includes a double newline at the end of its printing.
+ */
+
+void printExchangeMenu(){
+	printf("Record Exchange Rate\n\n");
+	printf("[1] Philippine Peso (PHP)\n");
+	printf("[2] United States Dollar (USD)\n");
+	printf("[3] Japanese Yen (JPY)\n");
+	printf("[4] British Pound Sterling (GBP)\n");
+	printf("[5] Euro (EUR)\n");
+	printf("[6] Chinese Yuan Renminni (CNY)\n");
+	printf("[0] Exit Exchange\n\n");
+}
+
+/**
+ * @brief Prints a purely visual guide on the different exchange currencies,
+ * 		  and prints their recorded double value.
+ *
+ * @warning Includes a double newline at the end of its printing.
+ */
+
+void printExchangedCurrencyMenu(double *globalCurrency){
+	printf("Exchanged Currency\n\n");
+	printf("[1] Philippine Peso (PHP) = %.2lf\n", *(globalCurrency + 0));
+	printf("[2] United States Dollar (USD) = %.2lf\n", *(globalCurrency + 1));
+	printf("[3] Japanese Yen (JPY)= %.2lf\n", *(globalCurrency + 2));
+	printf("[4] British Pound Sterling (GBP)= %.2lf\n", *(globalCurrency + 3));
+	printf("[5] Euro (EUR) = %.2lf\n", *(globalCurrency + 4));
+	printf("[6] Chinese Yuan Renminni (CNY)= %.2lf\n", *(globalCurrency + 5));
+	printf("[0] Exit Exchange\n\n");
+}
+
+/**
+ * @brief 	Prints lines to guide UI, then takes an integer input value, accepting only values in a strict range. 
+ * 
+ * @pre 	Standard input stream must be available.
+ * @warning Currently only supports integer-based console inputs through in_stream.
+ * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
+ *			Highly coupled with the main function, has several prints that guide the UI.
+ *
+ * @param[in]     lb  Inclusive lower bound that scanf checks for error detection.
+ * @param[in]     ub  Inclusive lower bound that scanf checks for error detection.
+ * 
+ * @return The exact valid integer value input from in_stream.
+ */
+
+int getValidChoice(int lb, int ub){
+	int validInput = 0;
+	int valSelect = -1;
+	
+	while(!validInput) {
+		printf("Choice: ");		
+		if(scanf("%d", &valSelect) == 1 && valSelect >= lb && valSelect <= ub){
+			validInput = 1;
+			cleanInputBuffer();
+			printf("\n***\n");
+			printf("Choice = %d\n", valSelect);			
+		}
+		else {
+			printf("Incorrect input. Please try again.\n");
+			cleanInputBuffer();
+		}
+	}
+	return valSelect;
+}
+
+/**
+ * @brief 	Cleanly takes an integer input value, accepting only values in a strict range.
+ * 
+ * @pre 	Standard input stream must be available.
+ * @warning Currently only supports integer-based console inputs through in_stream.
+ * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
+ *
+ * @param[in]     lb  Inclusive lower bound that scanf checks for error detection.
+ * @param[in]     ub  Inclusive lower bound that scanf checks for error detection.
+ * 
+ * @return The exact valid integer value input from in_stream.
+ */
+
+int getValidChoiceClean(int lb, int ub){
+	int validInput = 0;
+	int valSelect = 0;
+	
+	while(!validInput) {	
+		if(scanf("%d", &valSelect) == 1 && valSelect >= lb && valSelect <= ub){
+			validInput = 1;
+			cleanInputBuffer();	
+		}
+		else {
+			printf("Incorrect input. Please try again.\n");
+			cleanInputBuffer();
+		}
+	}
+	return valSelect;
+}
+
+/**
+ * @brief 	Cleanly takes double input value.
+ * 
+ * @pre 	Standard input stream must be available.
+ * @warning Currently only supports double-based console inputs through in_stream.
+ * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
+ * 
+ * @return The exact valid double value input from in_stream.
+ */
+
+double getValidAmount(){
+	int validInput = 0;
+	double valAmount = -1;
+	
+	while(!validInput) {
+		if(scanf("%lf", &valAmount) == 1){
+			validInput = 1;
+			cleanInputBuffer();	
+		}
+		else {
+			printf("Incorrect input. Please try again.\n");
+			cleanInputBuffer();
+		}
+	}
+	return valAmount;
+}
+
+/**
+ * @brief 	Cleanly takes a valid string input value, accepting only strings up to a defined max length.
+ * 
+ * @pre 	The max length must be defined.
+ * @warning Lacks strict error handling in case of inputs larger than the maximum length due to scanf properties.
+ *
+ * @param[out]    nameBuffer  String to be modified according to the user's input.
+ * @param[in]     maxLen  	  Maximum length that can be given to nameBuffer.
+ */
+
+void getValidName(char *nameBuffer, int maxLen){
+    int validFlag = 0;
+    int nameLength = -1;
+    while(!validFlag){
+        if(scanf("%100s", nameBuffer) == 1){
+            nameLength = strlen(nameBuffer);
+            if(nameLength > 0 && nameLength < maxLen){
+                validFlag = 1; 
+				cleanInputBuffer();
+            }
+        }        
+    }
+}
+
+/**
+ * @brief 	Prints the prompt for the user to register account name details.
+ *
+ * @param[out]    accountName  String to be modified according to the user's input.
+ */
+
+void registerAccountName(char *accountName){
+	printf("Register Account Name\n");
+	printf("Account Name: ");
+	getValidName(accountName, MAX_NAME_LEN + 1);
+	printf("\n***\n");
+	printf("Account Name = %s\n", accountName);
+}
+
+/**
+ * @brief 	Prints the prompt for the user to deposit balance from their account.
+ *
+ * @param[in]     accountName  Represents the user's account.
+ * @param[out]    balance      The value of the user's balance that is to be modified.
+ *
+ * @post The user's balance value is subtracted by their deposited amount.
+ */
+
+void depositAmount(char *accountName, double *balance){
+	double valDeposit = -1;
+	printf("Deposit Amount\n");
+	printf("Account Name: %s\n", accountName);
+	printf("Current Balance: %.2lf\n", *balance);
+	printf("Currency: PHP\n");
+	printf("\nDeposit Amount: ");
+	valDeposit = getValidAmount();
+	*balance -= valDeposit;
+	printf("\n***\n");
+	printf("Account Name = %s\n", accountName);	
+	printf("Deposit Amount = %.2lf\n", valDeposit);
+}
+
+/**
+ * @brief 	Prints the prompt for the user to withdraw balance from their account.
+ *
+ * @param[in]     accountName  Represents the user's account.
+ * @param[out]    balance      The value of the user's balance that is to be modified.
+ *
+ * @post The user's balance value is added by their withdraw amount.
+ */
+
+void withdrawAmount(char *accountName, double *balance){
+	double valWithdraw = -1;
+	printf("Withdraw Amount\n");
+	printf("Account Name: %s\n", accountName);
+	printf("Current Balance: %.2lf\n", *balance);
+	printf("Currency: PHP\n");
+	printf("\nWithdraw Amount: ");
+	valWithdraw = getValidAmount();
+	*balance += valWithdraw;
+	printf("\n***\n");
+	printf("Account Name = %s\n", accountName);	
+	printf("Withdraw Amount = %.2lf\n", valWithdraw);
+}
+
+void currencyExchange(double *globalCurrency){
+	printExchangedCurrencyMenu(globalCurrency);
+}
+
+/**
+ * @brief Records the user's input for a global currency's exchange value.
+ * 
+ */
+
+void recordExchangeRates(double *globalCurrency){
+	int validFlag = 0;
+	int choice = -1;
+	double currency = 0;
+	
+	while(!validFlag){
+		printExchangeMenu();
+		printf("Select Foreign Currency: ");
+		
+		choice = getValidChoiceClean(0,6);
+		if(choice){
+			printf("Exchange Rate: ");
+			currency = getValidAmount();
+			printf("\n***\n");
+			printf("Select Foreign Currency = [%d]\n", choice);
+			printf("Exchange Rate = %.2lf\n", currency);
+			globalCurrency[choice-1] = currency;
+			validFlag = 1;
+		} else {
+			validFlag = 1;
+		}
+	}
+}
+
+void showInterestAmount(){
+	
+}
+
+/**
+ * @brief Traversal function to guide the user to different transaction selections.
+ * 
+ */
+ 
+void transactionSelect(int choice, char *accountName, double *balance, double *globalCurrency){
+	switch(choice){
+		case 1:
+			registerAccountName(accountName);
+			break;
+		case 2:
+			depositAmount(accountName, balance);
+			break;
+		case 3:
+			withdrawAmount(accountName, balance);
+			break;
+		case 4:
+			currencyExchange(globalCurrency);
+			break;
+		case 5:
+			recordExchangeRates(globalCurrency);
+			break;
+		case 6:
+			showInterestAmount();
+			break;
+		default:
+			printf("ERROR: Invalid selection.\n");
+			break;
+	}
+}
+ 
+int main(){
+	char accountName[MAX_NAME_LEN + 1] = {0};
+	int runningFlag = 1;
+	int choice = -1;
+	double balance = 1000.00;
+	double globalCurrency[6] = {0};
+	
+	while(runningFlag){
+		printNavMenu();
+		choice = getValidChoice(0, 6);
+		if (choice){
+			transactionSelect(choice, accountName, &balance, globalCurrency);
+		} else {
+			runningFlag = 0;
+		}
+	}
+	printf("Exiting..\n");
+	return 0;
+}
