@@ -20,7 +20,7 @@ void cleanInputBuffer(){
 }
 
 /**
- * @brief Prints a purely visual guide on the menu navigation. 
+ * @brief Prints a purely visual guide on the menu navigation.     [REQ-0001]
  * 
  * @warning Includes a double newline at the end of its printing.
  */
