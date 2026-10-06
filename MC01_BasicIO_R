@@ -1,5 +1,335 @@
-********************
-Last names: Ilagan, Serios, Yardan
-Language: R
-Paradigm(s):
-********************
+# /********************
+# Last names: Ilagan, Serios, Yardan
+# Language: R
+# Paradigm(s): Procedural
+# ********************/
+
+#' Clean Console Input
+#'
+#' Reads specifically only one non-null terminated string until a ' ' is read. 
+#' @return a given string value from stdin.
+#' @export
+#'
+
+getConsoleInput <- function(promptText) {
+  input <- ""
+  cat(promptText)
+  input <- readLines("stdin", n = 1) 
+  if (length(input) == 0) return("") 
+  return(input)
+}
+
+#' Navigation Menu
+#'
+#' Prints out a navigation menu of the program as a guide for the user. [REQ-0001]
+#' @export
+#'
+printNavMenu <- function() {
+  cat("Select Transaction:\n")
+  cat("[1] Register Account Name\n")
+  cat("[2] Deposit Amount\n")
+  cat("[3] Withdraw Amount\n")
+  cat("[4] Currency Exchange\n")
+  cat("[5] Record Exchange Rates\n")
+  cat("[6] Show Interest Amount\n")
+  cat("[0] Exit Transaction\n\n")
+}
+
+#' Exchange Menu
+#'
+#' Prints out the currency exchange list as a guide for the user.
+#' @export
+#'
+printExchangeMenu <- function() {
+  cat("Record Exchange Rate\n\n")
+  cat("[1] Philippine Peso (PHP)\n")
+  cat("[2] United States Dollar (USD)\n")
+  cat("[3] Japanese Yen (JPY)\n")
+  cat("[4] British Pound Sterling (GBP)\n")
+  cat("[5] Euro (EUR)\n")
+  cat("[6] Chinese Yuan Renminni (CNY)\n")
+  cat("[0] Exit Exchange\n\n")
+}
+
+#' Exchange Menu With Conversion Applied
+#'
+#' Prints out the currency exchange list with the conversion rates applied for the user.
+#'
+#' @param source A double value representing the user's inputted source amount to be converted.
+#' @export
+#'
+
+printExchangedCurrencyMenu <- function(source) {
+  cat("Exchanged Currency\n\n")
+  cat(sprintf("[1] Philippine Peso (PHP) = %.2f\n", source * 1.00))
+  cat(sprintf("[2] United States Dollar (USD) = %.2f\n", source * 62.00))
+  cat(sprintf("[3] Japanese Yen (JPY) = %.2f\n", source * 0.40))
+  cat(sprintf("[4] British Pound Sterling (GBP) = %.2f\n", source * 84.00))
+  cat(sprintf("[5] Euro (EUR) = %.2f\n", source * 72.00))
+  cat(sprintf("[6] Chinese Yuan Renminni (CNY) = %.2f\n", source * 9.00))
+}
+
+#' Valid Choice I/O
+#'
+#' Prints out the currency exchange list with the conversion rates applied for the user.
+#'
+#' @param lb An integer value representing an inclusive lower bound that getConsoleInput checks for error detection. [REQ-0002], [REQ-0003]
+#' @param ub An integer value representing an inclusive upper bound that getConsoleInput checks for error detection.
+#'
+#' @return The integer value that corresponds to the user's input.
+#'
+#' @export
+#'
+getValidChoice <- function(lb, ub) {
+  validInput <- FALSE
+  valSelect <- -1
+  
+  while (!validInput) {
+    input <- getConsoleInput("Choice: ")
+    valSelect <- suppressWarnings(as.integer(input))
+    
+    if (!is.na(valSelect) && valSelect >= lb && valSelect <= ub) {
+      validInput <- TRUE
+      cat("\n***\n")
+      cat(sprintf("Choice = %d\n", valSelect))
+    } else {
+      cat("Incorrect input. Please try again.\n")
+    }
+  }
+  return(valSelect)
+}
+
+#' Cleaner Valid Choice I/O 
+#'
+#' Instead of printing lines that help guide the user, only validates specific integer input. 
+#'
+#' @param lb 		  An integer value representing an inclusive lower bound that getConsoleInput checks for error detection.
+#' @param ub		  An integer value representing an inclusive upper bound that getConsoleInput checks for error detection.
+#' @param promptText  An empty string that is passed into getConsoleInput for stricter stdin reads.
+#'
+#' @return The integer value that corresponds to the user's input.
+#'
+#' @export
+#'
+getValidChoiceClean <- function(lb, ub, promptText = "") {
+  validInput <- FALSE
+  valSelect <- -1
+  
+  while (!validInput) {
+    input <- getConsoleInput(promptText)
+    valSelect <- suppressWarnings(as.integer(input))
+
+    if (!is.na(valSelect) && valSelect >= lb && valSelect <= ub) {
+      validInput <- TRUE
+    } else {
+      cat("Incorrect input. Please try again.\n")
+    }
+  }
+  return(valSelect)
+}
+
+#' Valid Choice I/O For Numeric/Double Value
+#'
+#' Instead of printing lines that help guide the user, only validates specific numeric input. 
+#'
+#' @return The numeric/double value that corresponds to the user's input.
+#'
+#' @param promptText  An empty string that is passed into getConsoleInput for stricter stdin reads.
+#' @export
+#'
+getValidAmount <- function(promptText) {
+  validInput <- FALSE
+  valAmount <- -1.0
+  input = ""
+  
+  while (!validInput) {
+    input <- getConsoleInput(promptText)
+    valAmount <- suppressWarnings(as.numeric(input))
+    
+    if (!is.na(valAmount)) {
+      validInput <- TRUE
+    } else {
+      cat("Incorrect input. Please try again.\n")
+    }
+  }
+  return(valAmount)
+}
+
+#' Valid Choice I/O For Name
+#'
+#' Takes a string, and uses nchar as a way to count the number of characters present in the stdin, ensures it is within maxLen.
+#'
+#' @param promptText  An empty string that is passed into getConsoleInput for stricter stdin reads.
+#' @param maxLen      A defined integer value that determines the maximum size of the string. 
+#'
+#' @return A validated string of characters.
+#'
+#' @export
+#'
+getValidName <- function(promptText, maxLen) {
+  validFlag <- FALSE
+  nameBuffer <- ""
+  
+  while (!validFlag) {
+    nameBuffer <- getConsoleInput(promptText)
+    if (nchar(nameBuffer) > 0 && nchar(nameBuffer) <= maxLen) {
+      validFlag <- TRUE
+    }
+  }
+  return(nameBuffer)
+}
+
+#' Register Account
+#'
+#' Prompts the user to input an account name, and then prints their resulting output [REQ-0004], [REQ-0005], [REQ-0006]
+#'
+#' @param maxLen      A defined integer value that determines the maximum size of the string. 
+#'
+#' @return The validated account name string value associated with the user's input.
+#'
+#' @export
+#'
+registerAccountName <- function(maxLen) {
+  accountName = ""
+	
+  cat("Register Account Name\n")
+  accountName <- getValidName("Account Name: ", maxLen)
+  cat("\n***\n")
+  cat(sprintf("Account Name = %s\n", accountName))
+  
+  return(accountName)
+}
+
+#' Deposit Amount
+#'
+#' Prompts the user to input a numeric/double value that will be added to their current held balance. [REQ-0008], [REQ-0009] [REQ-0010]
+#'
+#' @param accountName    The string value that represents the current user's account name from main.
+#' @param balance		 A numeric value that represents the user's currently held balance from main.
+#'
+#' @return The new balance value after being evaluated by the function.
+#'
+#' @export
+#'
+depositAmount <- function(accountName, balance) {
+  valDeposit <- 0.0
+
+  cat("Deposit Amount\n")
+  cat(sprintf("Account Name: %s\n", accountName))
+  cat(sprintf("Current Balance: %.2f\n", balance))
+  cat("Currency: PHP\n\n")
+  
+  valDeposit <- getValidAmount("Deposit Amount: ")
+  balance <- as.numeric(balance + valDeposit)
+  
+  cat("\n***\n")
+  cat(sprintf("Account Name = %s\n", accountName))
+  cat(sprintf("Deposit Amount = %.2f\n", valDeposit))
+  
+  return(balance) 
+}
+#' Withdraw Amount
+#'
+#' Prompts the user to input a numeric/double value that will be subtracted from their current held balance. [REQ-0012], [REQ-0013], [REQ-0014]
+#'
+#' @param accountName    The string value that represents the current user's account name from main.
+#' @param balance		 A numeric value that represents the user's currently held balance from main.
+#'
+#' @return The new balance value after being evaluated by the function.
+#'
+#' @export
+#'
+withdrawAmount <- function(accountName, balance) {
+  valWithdraw <- 0.0
+
+  cat("Withdraw Amount\n")
+  cat(sprintf("Account Name: %s\n", accountName))
+  cat(sprintf("Current Balance: %.2f\n", balance))
+  cat("Currency: PHP\n\n")
+  
+  valWithdraw <- getValidAmount("Withdraw Amount: ")
+  balance <- as.numeric(balance - valWithdraw) 
+  
+  cat("\n***\n")
+  cat(sprintf("Account Name = %s\n", accountName))
+  cat(sprintf("Withdraw Amount = %.2f\n", valWithdraw))
+  
+  return(balance)
+}
+
+#' Currency Exchange
+#'
+#' Prompts the user to input a source amount, and then calculates the post-conversion value [REQ-0019], [REQ-0020]
+#' @export
+#'
+currencyExchange <- function() {
+  source <- 0.0
+  
+  cat("Foreign Currency Exchange\n")
+  source <- getValidAmount("Source Amount (PHP): ")
+  printExchangedCurrencyMenu(source)
+  cat("\n***\n")
+  cat("Source Currency = Philippine Peso (PHP)\n")
+  cat(sprintf("Source Amount (PHP) = %.2f\n\n", source))
+}
+
+#' Record Exchange Rate 
+#'
+#' Prompts the user to select a currency, and then prompts an exchange rate numeric value. [REQ-0016], [REQ-0017]
+#' @export
+#'
+recordExchangeRates <- function() {
+  printExchangeMenu()
+  choice <- getValidChoiceClean(0, 6, "Select Foreign Currency: ")
+  currency <- 0.0
+  
+  if (choice != 0) {
+    currency <- getValidAmount("Exchange Rate: ")
+    cat("\n***\n")
+    cat(sprintf("Select Foreign Currency = [%d]\n", choice))
+    cat(sprintf("Exchange Rate = %.2f\n", currency))
+  }
+}
+
+showInterestAmount <- function() {
+  # NOT IMPLEMENTED YET
+}
+
+#' Main Program Function
+#'
+#' Handles the main running of the banking exchange program. [REQ-0001], [REQ-0002], [REQ-0003], [REQ-0004], [REQ-0007], [REQ-0011], [REQ-0015], [REQ-0018]
+#' @export
+#'
+main <- function() {
+  accountName <- ""
+  runningFlag <- TRUE
+  choice <- -1
+  balance <- 1000.00
+  MAX_NAME_LEN <- 100
+  
+  while (runningFlag) {
+    printNavMenu()
+    choice <- getValidChoice(0, 6)
+    
+    if (choice != 0) {
+      if (choice == 1) {
+        accountName <- registerAccountName(MAX_NAME_LEN)
+      } else if (choice == 2) {
+        balance <- depositAmount(accountName, balance)
+      } else if (choice == 3) {
+        balance <- withdrawAmount(accountName, balance)
+      } else if (choice == 4) {
+        currencyExchange()
+      } else if (choice == 5) {
+        recordExchangeRates()
+      } else if (choice == 6) {
+        showInterestAmount()
+      }
+    } else {
+      runningFlag <- FALSE
+    }
+  }
+  cat("Exiting..\n")
+}
+
+main()
