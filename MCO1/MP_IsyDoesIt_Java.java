@@ -57,9 +57,13 @@ public class IsyDoesIt
     * Helper function to check if user inputted a valid choice (Y or N) 
     * returns false if none of the valid choices are detected  
     */
-    public static boolean choice(char choice)
+    public static boolean choice(String input)
     {
-        return (choice == 'Y' || choice == 'y' || choice == 'n' || choice == 'N');
+        if ( input== null || input.length() != 1) {
+        return false;
+    }
+    char c = input.charAt(0);
+    return c == 'Y' || c == 'y' || c == 'N' || c == 'n';
     }
 
     /*
@@ -69,7 +73,7 @@ public class IsyDoesIt
     public static int main_menu()
     {
         boolean isValid = false; 
-        int input;
+        int input=0;
         do
         {
             System.out.println("Select Transaction: ");
@@ -81,14 +85,24 @@ public class IsyDoesIt
             System.out.println("[5] Record Exchange Rate"); 
             System.out.println("[6] Show Interest Amount"); 
 
-            input = scanner.nextInt();
-            if(valid_choice(input))
+            try
             {
-                isValid = true;
+                input = scanner.nextInt();
+                if(valid_choice(input))
+                {
+                    isValid = true;
+                }
+                else
+                {
+                    System.out.println("Please enter a valid choice!");
+                }  
             }
-            else
+            catch (InputMismatchException e)
+            {
                 System.out.println("Please enter a valid choice!");
-
+                scanner.next();
+            }
+            
         } while(!isValid);
         return input; 
     }
@@ -104,10 +118,10 @@ public class IsyDoesIt
         System.out.println("Register Account Name");
         
         //Input for account name 
+        scanner.nextLine();
         do
         {
             System.out.print("Account Name: ");
-            scanner.nextLine();
             input = scanner.nextLine();
             if(name(input))
             {
@@ -117,6 +131,7 @@ public class IsyDoesIt
                 System.out.println("Please enter a valid name!");
         } while(!isValid);
 
+        System.out.println("Account name registered!");
         return input; 
     }
     /*
@@ -131,7 +146,7 @@ public class IsyDoesIt
         boolean isValid = false;
         System.out.println("Deposit Amount");
         System.out.println("Account Name: " + name);
-        System.out.printf("\nCurrent Balance: %.2f", balance);
+        System.out.printf("\nCurrent Balance: %.2f\n", balance);
         System.out.println("Currency: PHP"); 
 
         scanner.nextLine();
@@ -176,7 +191,7 @@ public class IsyDoesIt
 
         System.out.println("Withdraw Amount"); 
         System.out.println("Account Name: "+ name);
-        System.out.printf("\nCurrent Balance: ", balance); 
+        System.out.printf("\nCurrent Balance: %.2f\n", balance); 
         System.out.println("Currency: PHP"); 
 
         scanner.nextLine();
@@ -239,7 +254,7 @@ public class IsyDoesIt
             System.out.println("Record Exchange Rate ");
             exchange_menu();
 
-            System.out.printf("\n Select Foreign Currency: ");
+            System.out.printf("\nSelect Foreign Currency: ");
             input = scanner.nextInt();
             if(valid_choice(input))
             {
@@ -255,9 +270,9 @@ public class IsyDoesIt
         do
         {
             System.out.printf("\nExchange Rate: ");
-            foreign = scanner.nextDouble();
             try
             {
+                foreign = scanner.nextDouble();
                 if(foreign>0)
                 {
                     isValid = true;
@@ -267,11 +282,14 @@ public class IsyDoesIt
                     System.out.println("Exchange rate must be greater than 0!");
                 }
             }
-            catch (NumberFormatException e)
+            catch (InputMismatchException e)
             {
-                System.out.println("Please enter a valid amount!(double only)");
+                System.out.println("Please enter a valid amount! (Numbers only)");
+                scanner.next(); 
             }
         }while(!isValid);
+
+        System.out.printf("\nExchange rate updated successfully to %.2f!\n", foreign);
 
         switch(input)
         {
@@ -289,12 +307,14 @@ public class IsyDoesIt
                 return rate [5] = foreign;
         }
 
+        
+        
         return foreign; 
     }
      /*
     * @ Purpose: to convert amount from one currency to another currency [REQ-0003]
     */
-    public static void currency_exchange(int choice, double rate[])
+    public static void currency_exchange(double rate[])
     {
         boolean isValid = false; 
         int s_currency=0, e_currency=0; 
@@ -320,7 +340,7 @@ public class IsyDoesIt
             isValid = false; 
             do
             {
-                System.out.printf("\nExchange Rate: ");
+                System.out.printf("\nSource Amount: ");
                 source = scanner.nextDouble();
                 try
                 {
@@ -330,7 +350,7 @@ public class IsyDoesIt
                     }
                     else
                     {
-                        System.out.println("Exchange rate must be greater than 0!");
+                        System.out.println("Source amount must be greater than 0!");
                     }
                 }
                 catch (NumberFormatException e)
@@ -412,13 +432,13 @@ public class IsyDoesIt
 
         System.out.println("Show Interest Amount");
         System.out.println("Account Name: " + name);
-        System.out.printf("\nCurrent Balance: %.2f", balance);
+        System.out.printf("\nCurrent Balance: %.2f\n", balance);
         System.out.println("Currency: PHP");
         System.out.println("Interest Rate: 5%");
 
         do
         {
-            System.out.printf("\nExchange Rate: ");
+            System.out.printf("\nTotal Number of Days: ");
             input = scanner.nextInt();
             try
             {
@@ -428,7 +448,7 @@ public class IsyDoesIt
                 }
                 else
                 {
-                    System.out.println("Exchange rate must be greater than 0!");
+                    System.out.println("Days must be greater than 0!");
                 }
             }
             catch (NumberFormatException e)
@@ -437,6 +457,7 @@ public class IsyDoesIt
             }
         }while(!isValid);
 
+        days = input; 
         System.out.println("\nTotal Number of Days: " + days + " days\n");
         System.out.println("Day | Interest | Balance |");
         
@@ -455,12 +476,12 @@ public class IsyDoesIt
     public static void main (String[] args)
     {
       
-        boolean isEnd = false;
-        int choice, choice3=0;
-        char choice2;
+        boolean isEnd = false, isChoice = false;
+        int choice;
+        char choice2=' ';
         double balance = 0;
         double[] rate = {1.00, 62.00, 0.40, 84.00, 72.00, 9.00};  
-        String name=""; 
+        String name="", inputStr=""; 
         do
         {
             choice = main_menu();
@@ -479,7 +500,7 @@ public class IsyDoesIt
                     balance= withdraw_amount(balance, name);
                     break;
                 case 4:
-                    currency_exchange(choice3, rate);
+                    currency_exchange(rate);
                     break;
                 case 5:
                     exchange_rate(rate);
@@ -490,19 +511,46 @@ public class IsyDoesIt
             } 
             if (choice !=0 && choice!=4)
             {
-                System.out.print("\nBack to the Main Menu (Y/N): ");
-                choice2= scanner.next().charAt(0);
-                choice(choice2);
-                if (choice2=='N' || choice2 == 'n')
-                    isEnd = true;
+                do
+                {
+                     System.out.print("\nBack to the Main Menu (Y/N): ");
+                    inputStr = scanner.next();
+
+                    if (choice(inputStr)) {
+                        isChoice = true;
+                        choice2 = inputStr.charAt(0);
+                        
+                        if (choice2 == 'N' || choice2 == 'n') {
+                            isEnd = true;
+                        }
+                    } else {
+                        isChoice = false;
+                        System.out.println("Invalid input!");
+                    }
+                }while(!isChoice);
+               
             }
             else if (choice == 4)
             {
-                System.out.print("\nConvert another currency (Y/N)?:...");
-                choice2= scanner.next().charAt(0);
-                choice(choice2);
-                if (choice2=='N' || choice2 == 'n')
-                    isEnd = true;
+                do
+                {
+                    System.out.print("\nConvert another currency (Y/N)?: ");
+                    inputStr = scanner.next();
+
+                    if (choice(inputStr)) {
+                        isChoice = true; // FIX: Mark choice as valid to exit input-check loop
+                        choice2 = inputStr.charAt(0);
+                        
+                        if (choice2 == 'Y' || choice2 == 'y') {
+                            currency_exchange(rate); // Call again if Y
+                        } else if (choice2 == 'N' || choice2 == 'n') {
+                            // Returns to main menu naturally on next main loop iteration
+                        }
+                    } else {
+                        isChoice = false;
+                        System.out.println("Invalid input!");
+                    }
+                } while (!isChoice || choice2 == 'Y' || choice2 == 'y');
             }
         }
         while(!isEnd);
