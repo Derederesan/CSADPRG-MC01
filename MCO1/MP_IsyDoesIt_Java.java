@@ -479,7 +479,7 @@ public class MP_IsyDoesIt_Java
         boolean isEnd = false, isChoice = false;
         int choice;
         char choice2=' ';
-        double balance = 0;
+        double balance = 1000;
         double[] rate = {1.00, 62.00, 0.40, 84.00, 72.00, 9.00};  
         String name="", inputStr=""; 
         do
