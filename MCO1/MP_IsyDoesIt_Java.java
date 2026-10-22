@@ -5,7 +5,7 @@ Paradigm(s): Procedural
 ********************/
 import java.util.*;
 
-public class IsyDoesIt
+public class MP_IsyDoesIt_Java
 {
     private static final Scanner scanner = new Scanner(System.in);
 
