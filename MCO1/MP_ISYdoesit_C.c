@@ -1,16 +1,31 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+
 #define MAX_NAME_LEN 63
 #define MAX_ACCOUNT_NUM 100
 
 // 7, because index 0 is a placeholder
 #define MAX_CURRENCIES 7
 
+typedef struct {
+    char code[4];
+    double rate;
+} Currency;
+
 /********************
 Last names: Ilagan, Serios, Yardan
 Language: C
 Paradigm(s): Procedural
 ********************/
+
+/**
+ * @file
+ * @brief C implementation of the Banking and Currency Exchange Application.
+ * @author Alexie Ilagan, Justine Serios, Andre Yardan
+ *
+ * Developed by Team Isy Does It for CSADPRG MCO1.
+ */
 
 /**
  * @brief Cleans retained string data in memory.
@@ -24,7 +39,7 @@ void cleanInputBuffer(){
 }
 
 /**
- * @brief Prints a purely visual guide on the menu navigation.     [REQ-0001]
+ * @brief Prints a purely visual guide on the menu navigation.   
  * 
  * @warning Includes a double newline at the end of its printing.
  */
@@ -57,28 +72,35 @@ void printExchangeMenu(){
 }
 
 /**
- * @brief Converts a source currency amount into a target currency amount by multiplying it by a factor of
- * 		  the rates of the source divided by the rates of the target. 
+ * @brief Converts a source currency amount to a target currency
+ *        using their respective PHP-relative exchange rates.
  *
- * @return  The target currency amount.
- * @warning The function parameter double values must not be 0.
+ * @param[in] amount  Amount in the source currency.
+ * @param[in] source  Index of the source currency.
+ * @param[in] target  Index of the target currency.
+ * @param[in] rates   Array containing currency codes and exchange rates.
+ *
+ * @pre Source and target indices must be valid.
+ * @pre The target currency exchange rate must not be zero.
+ *
+ * @return The converted amount in the target currency.
  */
-double convertCurrency(double amount, int source, int target, double rates[MAX_CURRENCIES]){
-	return amount * rates[source] / rates[target];
+double convertCurrency(double amount, int source, int target, Currency rates[MAX_CURRENCIES]){
+	return amount * rates[source].rate / rates[target].rate;
 }
 
 /**
- * @brief 	Prints lines to guide UI, then takes an integer input value, accepting only values in a strict range. [REQ-0002], [REQ-0003]
+ * @brief 	Prints lines to guide UI, then takes an integer input value, accepting only values in a strict range. 
  * 
  * @pre 	Standard input stream must be available.
- * @warning Currently only supports integer-based console inputs through in_stream.
+ * @warning Currently only supports integer-based console inputs through stdin.
  * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
  *			Highly coupled with the main function, has several prints that guide the UI.
  *
  * @param[in]     lb  Inclusive lower bound that scanf checks for error detection.
- * @param[in]     ub  Inclusive lower bound that scanf checks for error detection.
+ * @param[in]     ub  Inclusive upper bound that scanf checks for error detection.
  * 
- * @return The exact valid integer value input from in_stream.
+ * @return The exact valid integer value input from stdin.
  */
 
 int getValidChoice(int lb, int ub){
@@ -105,13 +127,13 @@ int getValidChoice(int lb, int ub){
  * @brief 	Cleanly takes an integer input value, accepting only values in a strict range.
  * 
  * @pre 	Standard input stream must be available.
- * @warning Currently only supports integer-based console inputs through in_stream.
+ * @warning Currently only supports integer-based console inputs through stdin.
  * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
  *
  * @param[in]     lb  Inclusive lower bound that scanf checks for error detection.
- * @param[in]     ub  Inclusive lower bound that scanf checks for error detection.
+ * @param[in]     ub  Inclusive upper bound that scanf checks for error detection.
  * 
- * @return The exact valid integer value input from in_stream.
+ * @return The exact valid integer value input from stdin.
  */
 
 int getValidChoiceClean(int lb, int ub){
@@ -135,10 +157,10 @@ int getValidChoiceClean(int lb, int ub){
  * @brief 	Cleanly takes double input value.
  * 
  * @pre 	Standard input stream must be available.
- * @warning Currently only supports double-based console inputs through in_stream.
+ * @warning Currently only supports double-based console inputs through stdin.
  * 			Prints an error message in case of invalid input, cleans the input buffer afterwards.
  * 
- * @return The exact valid double value input from in_stream.
+ * @return The exact valid double value input from stdin.
  */
 
 double getValidAmount(){
@@ -207,7 +229,7 @@ int getValidYN(){
                 result = 0;
                 validFlag = 1;
             } else {
-                printf("\nIncorrect input. Please enter Y or N: ");
+                printf("\nInvalid input. Please enter Y or N.\n");
             }
         } else {
             cleanInputBuffer();
@@ -218,7 +240,50 @@ int getValidYN(){
 }
 
 /**
- * @brief 	Prints the prompt for the user to register account name details. [REQ-0004], [REQ-0005], [REQ-0006]
+ * @brief   Prompts the user for a valid, registered currency code.
+ * 
+ * @param[in]       rates  Represents the array of structs that hold the values
+ *                           for both the currency rate, and currency code. ie, USD
+ *
+ * @pre     Standard input stream must be available.
+ * @return  Integer value that represents an index position mapped to a global currency.
+ */
+
+int getValidCurrency(Currency rates[MAX_CURRENCIES]){
+	char input[8] = {0};
+	int i = 0;
+	int currencyChoice = -1;
+	
+	while (currencyChoice == -1){
+		printf("Currency (PHP/USD/JPY/GBP/EUR/CNY): ");
+		
+		if (scanf("%7s", input) == 1){
+			cleanInputBuffer();
+			
+			for(i = 0; input[i] != '\0'; i++){
+				if(input[i] >= 'a' && input[i] <= 'z'){
+					input[i] = input[i] - ('a' - 'A');
+				}
+			}
+			
+			for(i = 1; i < MAX_CURRENCIES; i++){
+				if(strcmp(input, rates[i].code) == 0){
+					currencyChoice = i;
+				}
+			}
+			
+			if (currencyChoice == -1){
+				printf("That currency is not registered in the database.\n");
+			}
+		} else {
+			printf("Please select a valid currency.\n");
+		}
+	}
+	return currencyChoice;
+}
+
+/**
+ * @brief 	Prints the prompt for the user to register account name details. [REQ-0009]
  *
  * @param[out]    accountName  String to be modified according to the user's input.
  */
@@ -232,98 +297,135 @@ void registerAccountName(char *accountName){
 }
 
 /**
- * @brief 	Prints the prompt for the user to deposit balance from their account. [REQ-0008], [REQ-0009] [REQ-0010]
+ * @brief Deposits a positive amount into the user's account,
+ *        converting foreign currencies into PHP when necessary. [REQ-0004], [REQ-0008]
  *
- * @param[in]     accountName  Represents the user's account.
- * @param[out]    balance      The value of the user's balance that is to be modified.
+ * @param[in] accountName   Name of the account holder.
+ * @param[in,out] balance   Current account balance.
+ * @param[in] rates         Array of currency codes and exchange rates.
  *
- * @post The user's balance value is added by their withdraw amount. 
+ * @post The account balance is increased by the value
+ *       of the deposited amount.
  */
 
-void depositAmount(char *accountName, double *balance){
+void depositAmount(char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
 	double valDeposit = -1;
+	int currencyChoice = -1;
+	
 	printf("Deposit Amount\n");
 	printf("Account Name: %s\n", accountName);
 	printf("Current Balance: %.2lf\n", *balance);
-	printf("Currency: PHP\n");
-	printf("\nDeposit Amount: ");
+	currencyChoice = getValidCurrency(rates);
+	
+	printf("Deposit Amount: ");
 	valDeposit = getValidAmount();
-	while(valDeposit < 0){
+	while(valDeposit <= 0 || !isfinite(valDeposit)){
+		printf("Please enter a valid amount.\n");
 		valDeposit = getValidAmount();
 	}
-	*balance += valDeposit;
+	*balance += convertCurrency(valDeposit, currencyChoice, 1, rates);
 	printf("\n***\n");
 	printf("Account Name = %s\n", accountName);	
-	printf("Deposit Amount = %.2lf\n", valDeposit);
+	printf("Deposit Amount = %.2lf %s\n", valDeposit, rates[currencyChoice].code);
+	printf("Updated Balance = %.2lf\n", *balance);
 }
 
 /**
- * @brief 	Prints the prompt for the user to withdraw balance from their account. 
- * 			Does not allow for withdrawal amounts larger than the account balance. [REQ-0012], [REQ-0013], [REQ-0014]
+ * @brief Withdraws an amount from the user's account,
+ *        converting foreign currencies into PHP when necessary. [REQ-0005], [REQ-0008]
  *
- * @param[in]     accountName  Represents the user's account.
- * @param[out]    balance      The value of the user's balance that is to be modified.
+ * @param[in] accountName   Name of the account holder.
+ * @param[in,out] balance   Current account balance.
+ * @param[in] rates         Array of currency codes and exchange rates.
  *
- * @post The user's balance value is subtracted by their deposited amount.
+ * @post The account balance is decreased by the value
+ *       of the validated withdrawal amount.
+ *
+ * @warning Withdrawals exceeding the available balance are rejected.
  */
-
-void withdrawAmount(char *accountName, double *balance){
+ 
+void withdrawAmount(char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
 	double valWithdraw = -1;
+	int currencyChoice = -1;
+	double totalWithdraw = 0.0;
+	
 	printf("Withdraw Amount\n");
 	printf("Account Name: %s\n", accountName);
 	printf("Current Balance: %.2lf\n", *balance);
-	printf("Currency: PHP\n");
+	currencyChoice = getValidCurrency(rates);
+	
 	printf("\nWithdraw Amount: ");
 	valWithdraw = getValidAmount();
-	while(valWithdraw < 0 || valWithdraw > *balance){
+	totalWithdraw = convertCurrency(valWithdraw, currencyChoice, 1, rates);
+	
+	while(valWithdraw <= 0 || !isfinite(valWithdraw) || !isfinite(totalWithdraw) || totalWithdraw > *balance){
+		printf("Please enter a valid amount.\n");
 		valWithdraw = getValidAmount();
+		totalWithdraw = convertCurrency(valWithdraw, currencyChoice, 1, rates);
 	}
-	*balance -= valWithdraw;
+	*balance -= totalWithdraw;
 	printf("\n***\n");
 	printf("Account Name = %s\n", accountName);	
-	printf("Withdraw Amount = %.2lf\n", valWithdraw);
+	printf("Withdraw Amount = %.2lf %s\n", valWithdraw, rates[currencyChoice].code);
+	printf("Updated Balance = %.2lf\n", *balance);	
 }
 
 /**
- * @brief 	Prompts a user for a source amount, then exchanges it to other currency equivalencies. [REQ-0019], [REQ-0020]
+ * @brief Converts a specified amount between two supported currencies. [REQ-0003]
  *
- * @warning  The exchange values are hardcoded in function printExchangedCurrencyMenu.
+ * @param[in] rates  Array containing the current currency exchange rates.
  *
- * @post  Prints the exchange equivalency according to the hardcoded exchange values.
+ * @pre Exchange rates must be positive and valid.
+ *
+ * @post Displays the converted amount and allows the user
+ *       to perform additional currency conversions.
+ *
+ * @note Currency exchanges do not modify the account balance.
  */
 
-void currencyExchange(double rates[MAX_CURRENCIES]){
+void currencyExchange(Currency rates[MAX_CURRENCIES]){
 	double source = 0.0;
 	double result = 0.0;
 	int sourceChoice = -1;
 	int targetChoice = -1;
+	int runningFlag = 1;
 	
-	printf("Foreign Currency Exchange\n");
-	printf("Source Currency Option: ");
-	printExchangeMenu();
-	sourceChoice = getValidChoiceClean(1,6);
-	
-	printf("Source Amount: ");	
-	source = getValidAmount();
-	
-	printf("Exchanged Currency Options:\n");
-	printExchangeMenu();
-	
-	printf("Exchange Currency: ");
-	targetChoice = getValidChoiceClean(1,6);
-	
-	result = convertCurrency(source, sourceChoice, targetChoice, rates);
-	printf("\n***\n");
-    printf("Exchange Currency = %d\n", targetChoice);
-    printf("Exchange Amount = %.2lf\n\n", result);	
+	while(runningFlag){
+		printf("Foreign Currency Exchange\n");
+		printf("Source Currency Option:\n");
+		printExchangeMenu();
+		printf("Source Currency: ");
+		sourceChoice = getValidChoiceClean(1,6);
+		
+		printf("Source Amount: ");	
+		source = getValidAmount();
+		while(source <= 0 || !isfinite(source)){
+			printf("Please enter a valid amount.\n");
+			source = getValidAmount();
+		}
+		
+		printf("\nExchanged Currency Options:\n");
+		printExchangeMenu();
+		
+		printf("Exchange Currency: ");
+		targetChoice = getValidChoiceClean(1,6);
+		
+		result = convertCurrency(source, sourceChoice, targetChoice, rates);
+		printf("\n***\n");
+		printf("Exchange Currency = %d\n", targetChoice);
+		printf("Exchange Amount = %.2lf\n\n", result);	
+		
+		printf("Convert another currency (Y/N)? . . . ");
+		runningFlag = getValidYN();
+	}
 }
 
 /**
- * @brief Records the user's input for a global currency's exchange value. [REQ-0016], [REQ-0017]
+ * @brief Records the user's input for a global currency's exchange value. [REQ-0001] [REQ-0002]
  * 
  */
 
-void recordExchangeRates(double rates[MAX_CURRENCIES]){
+void recordExchangeRates(Currency rates[MAX_CURRENCIES]){
     int choice = -1;
     double currency = 0.0;
     printf("Record Exchange Rate\n\n");
@@ -334,7 +436,11 @@ void recordExchangeRates(double rates[MAX_CURRENCIES]){
     if(choice){
         printf("Exchange Rate: ");
         currency = getValidAmount();
-        rates[choice] = currency;
+		while(currency <= 0 || !isfinite(currency)){
+			printf("Please enter a valid exchange rate.\n");
+			currency = getValidAmount();
+		}
+        rates[choice].rate = currency;
         printf("\n***\n");
         printf("Select Foreign Currency = [%d]\n", choice);
         printf("Exchange Rate = %.2lf\n", currency);
@@ -342,10 +448,17 @@ void recordExchangeRates(double rates[MAX_CURRENCIES]){
 }
 
 /**
- * @brief Computes and displays the interest amounts and balance for a given number of days. [REQ-0006], [REQ-0007]
- * 
- * @param[in]     accountName  Represents the user's account.
- * @param[out]    balance      The value of the user's balance. 
+ * @brief Calculates and displays a daily compound-interest projection
+ *        using a fixed annual interest rate of 5 percent. [REQ-0006] [REQ-0007]
+ *
+ * @param[in] accountName  Name of the account holder.
+ * @param[in] balance      Starting account balance.
+ *
+ * @note Daily interest is rounded to two decimal places before
+ *       being added to the projected balance.
+ *
+ * @post Displays the daily interest and projected balance
+ *       without modifying the actual account balance.
  */
 
 void showInterestAmount(char* accountName, double balance){
@@ -361,31 +474,36 @@ void showInterestAmount(char* accountName, double balance){
 	printf("Currency: PHP\n");
 	printf("Interest Rate: 5%%\n\n");
 	
-	printf("Total number of days:\n");
-	numDays = getValidChoiceClean(1, 3650)
-	printf("%-5s | %-10s | %-10s\n", "Day", "Interest", "Balance");
-	for(i = 0; i <= numDays; i++){
-		dailyInterest = eodBalance*(annualRate/365)
+	printf("Total number of days: ");
+	numDays = getValidChoiceClean(1, 3650);
+	printf("\n%-5s | %-10s | %-10s\n", "Day", "Interest", "Balance");
+	for(i = 1; i <= numDays; i++){
+		dailyInterest = round(eodBalance*(annualRate/365) * 100.0) / 100.0;
 		eodBalance += dailyInterest;
-		printf("%-5d | %-10.2lf | %-10.2lf\n", day, dailyInterest, projectedBalance);
+		printf("%-5d | %-10.2lf | %-10.2lf\n", i, dailyInterest, eodBalance);
 	}
 }
 
 /**
- * @brief Traversal function to guide the user to different transaction selections. [REQ-0004], [REQ-0007], [REQ-0011], [REQ-0015], [REQ-0018]
- * 
+ * @brief Dispatches the selected menu transaction to its
+ *        corresponding function.
+ *
+ * @param[in] choice          Selected transaction menu option.
+ * @param[in,out] accountName Account name, modified during registration.
+ * @param[in,out] balance     Account balance, modified by transactions.
+ * @param[in,out] rates       Exchange rates, modified when recording rates.
  */
  
-void transactionSelect(int choice, char *accountName, double *balance, double rates[MAX_CURRENCIES]){
+void transactionSelect(int choice, char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
 	switch(choice){
 		case 1:
 			registerAccountName(accountName);
 			break;
 		case 2:
-			depositAmount(accountName, balance);
+			depositAmount(accountName, balance, rates);
 			break;
 		case 3:
-			withdrawAmount(accountName, balance);
+			withdrawAmount(accountName, balance, rates);
 			break;
 		case 4:
 			currencyExchange(rates);
@@ -394,7 +512,7 @@ void transactionSelect(int choice, char *accountName, double *balance, double ra
 			recordExchangeRates(rates);
 			break;
 		case 6:
-			showInterestAmount();
+			showInterestAmount(accountName, *balance);
 			break;
 		default:
 			printf("ERROR: Invalid selection.\n");
@@ -403,21 +521,21 @@ void transactionSelect(int choice, char *accountName, double *balance, double ra
 }
  
 /**
- * @brief Main program loop, constantly checks for user's valid input to navigate menu. [REQ-0002], [REQ-0003]
+ * @brief Main program loop, constantly checks for user's valid input to navigate menu.
  * 
  */ 
  
 int main(){
 	
 	// +1 so that the rates are no longer zero indexed, which align with user input 1-6. index 0 is a placeholder
-	double globalCurrency[MAX_CURRENCIES] = {
-		-1.00,
-		1.00,
-		62.00,
-		0.40,
-		84.00,
-		72.00,
-		9.00
+	Currency globalCurrency[MAX_CURRENCIES] = {
+		{"",    -1.00},
+		{"PHP",  1.00},
+		{"USD", 62.00},
+		{"JPY",  0.40},
+		{"GBP", 84.00},
+		{"EUR", 72.00},
+		{"CNY",  9.00}
 	};
 	
 	char accountName[MAX_NAME_LEN + 1] = {0};
@@ -430,6 +548,10 @@ int main(){
 		choice = getValidChoice(0, 6);
 		if (choice){
 			transactionSelect(choice, accountName, &balance, globalCurrency);
+			if(choice != 4){
+				printf("Back to Main Menu (Y/N): ");
+				runningFlag = getValidYN();
+			}
 		} else {
 			runningFlag = 0;
 		}
