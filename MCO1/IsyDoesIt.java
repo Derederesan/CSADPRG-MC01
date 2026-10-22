@@ -294,7 +294,7 @@ public class IsyDoesIt
      /*
     * @ Purpose: to convert amount from one currency to another currency [REQ-0003]
     */
-    public static void currency_exchange(int choice, double rate[], )
+    public static void currency_exchange(int choice, double rate[])
     {
         boolean isValid = false; 
         int s_currency=0, e_currency=0; 
