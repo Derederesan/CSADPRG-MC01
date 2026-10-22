@@ -303,7 +303,7 @@ withdrawAmount <- function(accountName, balance, globalCurrency) {
 	valWithdraw <- getValidAmount("Withdraw Amount: ")
     totalWithdraw <- convertCurrency(valWithdraw, currencyChoice, "PHP", globalCurrency)	
   }  
-  balance <- balance - convertCurrency(valWithdraw, currencyChoice, "PHP", globalCurrency)
+  balance <- balance - totalWithdraw
   
   cat("\n***\n")
   cat(sprintf("Account Name = %s\n", accountName))
@@ -420,8 +420,8 @@ showInterestAmount <- function(accountName, balance) {
 #' Main Program Function
 #'
 #' Handles the main running of the banking exchange program. 
-#' @export
-#'
+#'	
+
 main <- function() {
   accountName <- ""
   runningFlag <- TRUE
