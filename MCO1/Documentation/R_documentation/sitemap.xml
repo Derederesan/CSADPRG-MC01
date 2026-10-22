@@ -1,0 +1,23 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/convertCurrency.html</loc></url>
+<url><loc>/reference/currencyExchange.html</loc></url>
+<url><loc>/reference/depositAmount.html</loc></url>
+<url><loc>/reference/getConsoleInput.html</loc></url>
+<url><loc>/reference/getValidAmount.html</loc></url>
+<url><loc>/reference/getValidChoice.html</loc></url>
+<url><loc>/reference/getValidChoiceClean.html</loc></url>
+<url><loc>/reference/getValidName.html</loc></url>
+<url><loc>/reference/getValidYN.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/main.html</loc></url>
+<url><loc>/reference/printExchangeMenu.html</loc></url>
+<url><loc>/reference/printNavMenu.html</loc></url>
+<url><loc>/reference/recordExchangeRates.html</loc></url>
+<url><loc>/reference/registerAccountName.html</loc></url>
+<url><loc>/reference/showInterestAmount.html</loc></url>
+<url><loc>/reference/withdrawAmount.html</loc></url>
+</urlset>
+

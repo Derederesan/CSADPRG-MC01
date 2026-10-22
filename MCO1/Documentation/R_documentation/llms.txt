@@ -1,0 +1,27 @@
+A banking and currency exchange application implemented in R for a
+programming languages course.
+
+# Package index
+
+## All functions
+
+- [`convertCurrency()`](convertCurrency.md) : Convert Currency
+- [`currencyExchange()`](currencyExchange.md) : Currency Exchange
+- [`depositAmount()`](depositAmount.md) : Deposit Amount
+- [`getConsoleInput()`](getConsoleInput.md) : Clean Console Input
+- [`getValidAmount()`](getValidAmount.md) : Valid Choice I/O For
+  Numeric/Double Value
+- [`getValidChoice()`](getValidChoice.md) : Validate a Choice I/O
+- [`getValidChoiceClean()`](getValidChoiceClean.md) : Validate a Choice
+  I/O Without Prints
+- [`getValidName()`](getValidName.md) : Valid Choice I/O For Name
+- [`getValidYN()`](getValidYN.md) : Validate a Yes/No Response
+- [`main()`](main.md) : Main Program Function
+- [`printExchangeMenu()`](printExchangeMenu.md) : Exchange Menu
+- [`printNavMenu()`](printNavMenu.md) : Navigation Menu
+- [`recordExchangeRates()`](recordExchangeRates.md) : Record Exchange
+  Rate
+- [`registerAccountName()`](registerAccountName.md) : Register Account
+- [`showInterestAmount()`](showInterestAmount.md) : Show Interest Amount
+- [`withdrawAmount()`](withdrawAmount.md) : Withdraw Amount
+
