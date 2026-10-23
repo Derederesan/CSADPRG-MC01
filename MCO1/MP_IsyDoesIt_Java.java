@@ -5,30 +5,43 @@ Paradigm(s): Procedural
 ********************/
 import java.util.*;
 
-public class MP_IsyDoesIt_Java
+public class IsyDoesIt
 {
     private static final Scanner scanner = new Scanner(System.in);
 
     /*
     * Helper function 
     * @ Purpose: checks if provided choice is valid (number from 0-6)
+    * @ return: returns the user's valid input
     */
-    public static boolean valid_choice(int choice)
+    public static int valid_choice(String prompt)
     {
-        return (choice == 0 ||
-                choice == 1 || 
-                choice == 2 ||
-                choice == 3 ||
-                choice == 4 ||
-                choice == 5 ||
-                choice == 6);
+        while(true)
+        {
+            try
+            {
+                System.out.print(prompt); 
+                int input = scanner.nextInt(); 
+                scanner.nextLine();
+                // Check if the input is within the valid range
+                if (input >= 0 && input <= 6) 
+                {
+                    return input; // Valid input, exit the loop and return
+                } else {
+                    System.out.println("Invalid choice! Please enter a number between 0 and 6.");
+                }
+
+            }
+            catch(InputMismatchException e)
+            {
+                System.out.println("Invalid choice! Please enter a number between 0 and 6."); 
+                scanner.next();
+            }
+        }
     }  
+
+
     /*
-    *
-    */
-
-
-     /*
     * Helper function 
     * @ Purpose: to check if user inputted a valid name 
     * checks each character of the input
@@ -59,52 +72,68 @@ public class MP_IsyDoesIt_Java
     */
     public static boolean choice(String input)
     {
-        if ( input== null || input.length() != 1) {
-        return false;
-    }
-    char c = input.charAt(0);
-    return c == 'Y' || c == 'y' || c == 'N' || c == 'n';
+        if ( input== null || input.length() != 1) 
+        {
+            return false;
+        }
+        char c = input.charAt(0);
+        return c == 'Y' || c == 'y' || c == 'N' || c == 'n';
     }
 
+    /*
+    * Helper function to check if user inputted a valid amount of money 
+    * @return: double containing user's valid input 
+    */
+    public static double money(String prompt)
+    {
+        while(true)
+        {
+            try
+            {
+                System.out.print(prompt); 
+                String input = scanner.nextLine();
+                Double amount = Double.parseDouble(input); 
+                // Check if the input is within the valid range
+                if (amount>=0) 
+                {
+                    return amount; // Valid input, exit the loop and return
+                } else {
+                    System.out.println("Please enter an amount greater than 0.");
+                }
+
+            }
+            catch(NumberFormatException e)
+            {
+                System.out.println("Please enter a valid amount!(double only)"); 
+            }
+        }  
+    }
+
+    /*
+    * Helper function to convert into different currency 
+    * @return: double containing converted amount
+    */
+    public static double convert(double amount, int from, int to, double rate[])
+    {
+        double base = amount*rate[from];
+        return base / rate[to];
+    }
     /*
     * @ Purpose: displays the main menu
     * @ return int containing the chosen menu 
     */
     public static int main_menu()
     {
-        boolean isValid = false; 
-        int input=0;
-        do
-        {
             System.out.println("Select Transaction: ");
-            System.out.println("[0] Terminate program");
             System.out.println("[1] Register Account Name"); 
             System.out.println("[2] Deposit Amount"); 
             System.out.println("[3] Withdraw Amount"); 
             System.out.println("[4] Currency Exchange"); 
             System.out.println("[5] Record Exchange Rate"); 
             System.out.println("[6] Show Interest Amount"); 
+            System.out.println("[0] Exit Transaction"); 
 
-            try
-            {
-                input = scanner.nextInt();
-                if(valid_choice(input))
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    System.out.println("Please enter a valid choice!");
-                }  
-            }
-            catch (InputMismatchException e)
-            {
-                System.out.println("Please enter a valid choice!");
-                scanner.next();
-            }
-            
-        } while(!isValid);
-        return input; 
+            return valid_choice("Choice: ");
     }
     /*
     * @ Purpose: Registers the user's name [REQ-0009]
@@ -139,40 +168,51 @@ public class MP_IsyDoesIt_Java
     * @ Provision to set Philippine Peso(PHP) as Base Currency [REQ-0002]
     * @ return double containing the user's new balance 
     */
-    public static double deposit_amount(double balance, String name)
-    {
-        String input; 
+    public static double deposit_amount(double balance, String name, double rate [])
+    { 
         double deposit = 0.0;
-        boolean isValid = false;
+        String currency = "";
+        boolean isValid = false; 
         System.out.println("Deposit Amount");
         System.out.println("Account Name: " + name);
         System.out.printf("\nCurrent Balance: %.2f\n", balance);
-        System.out.println("Currency: PHP"); 
-
-        scanner.nextLine();
-        
-        do
+        while(!isValid)
         {
-            System.out.print("\nDeposit Amount: "); 
-            input = scanner.nextLine();
-            try
-            {
-                deposit = Double.parseDouble(input);
-                if(deposit>0)
-                {
+            System.out.printf("\nCurrency (PHP/USD/JPY/GBP/EUR/CNY): "); 
+            currency = scanner.nextLine().toUpperCase();
+            if(currency.equals("PHP")||
+               currency.equals("USD")||
+               currency.equals("JPY")||
+               currency.equals("GBP")||
+               currency.equals("EUR")||
+               currency.equals("CNY"))
                     isValid=true;
-                }
-                else
-                {
-                    System.out.println("Please enter an amount greater than 0.");
-                }
-                    
-            } catch (NumberFormatException e)
-            {
-                System.out.println("Please enter a valid amount!(double only)");
-            }
-        } while (!isValid);
-         
+        } 
+
+        deposit = money("\nDeposit Amount: ");
+        
+        switch(currency)
+        {
+                case "PHP":
+                    deposit = convert(deposit,0,0,rate);
+                    break; 
+                case "USD":
+                    deposit = convert (deposit,1,0,rate);
+                    break;
+                case "JPY":
+                    deposit = convert(deposit,2,0,rate );
+                    break; 
+                case "GBP":
+                    deposit = convert(deposit, 3,0,rate);
+                    break; 
+                case "EUR":
+                    deposit = convert(deposit, 4,0,rate);
+                    break; 
+                case "CNY":
+                    deposit = convert(deposit, 5,0,rate);
+                    break; 
+        }
+
         balance += deposit;
         System.out.printf("\nDeposit Amount: %.2f", deposit); 
         System.out.printf("\nUpdated Balance: %.2f", balance);
@@ -183,50 +223,93 @@ public class MP_IsyDoesIt_Java
     * @ Provision to set Philippine Peso(PHP) as Base Currency [REQ-0002]
     * @ return double containing the user's new balance 
     */
-    public static double withdraw_amount(double balance, String name)
+    public static double withdraw_amount(double balance, String name, double rate[])
     {
-        String input; 
+        String currency = ""; 
         double withdraw = 0.0;
         boolean isValid = false;
 
         System.out.println("Withdraw Amount"); 
         System.out.println("Account Name: "+ name);
-        System.out.printf("\nCurrent Balance: %.2f\n", balance); 
-        System.out.println("Currency: PHP"); 
-
-        scanner.nextLine();
-        do
+        System.out.printf("\nCurrent Balance: %.2f", balance);
+        while(!isValid)
         {
-            System.out.printf("\nWithdraw Amount: ");
-            input = scanner.nextLine();
-            try
-            {
-                withdraw = Double.parseDouble(input);
-
-                if(withdraw>0 && withdraw<balance)
-                {
-                    isValid = true;
-                }
-                else if(withdraw>balance)
-                {
-                    System.out.println("Value exceeds current balance!"); 
-                }
-                else if(withdraw==0)
-                {
-                    System.out.println("Please input a number greater than 0.");
-                }
-            }
-            catch (NumberFormatException e)
-            {
-                System.out.println("Please enter a valid amount!(double only)");
-            }
-        }while(!isValid);
+            System.out.printf("\nCurrency (PHP/USD/JPY/GBP/EUR/CNY): "); 
+            currency = scanner.nextLine().toUpperCase();
+            if(currency.equals("PHP")||
+               currency.equals("USD")||
+               currency.equals("JPY")||
+               currency.equals("GBP")||
+               currency.equals("EUR")||
+               currency.equals("CNY"))
+                    isValid=true;
+        }
         
+        withdraw = money("\nWithdraw Amount: ");
+        switch(currency)
+        {
+                case "PHP":
+                    withdraw = convert(withdraw,0,0,rate);
+                    break; 
+                case "USD":
+                    withdraw = convert (withdraw,1,0,rate);
+                    break;
+                case "JPY":
+                    withdraw = convert(withdraw,2,0,rate );
+                    break; 
+                case "GBP":
+                    withdraw = convert(withdraw, 3,0,rate);
+                    break; 
+                case "EUR":
+                    withdraw = convert(withdraw, 4,0,rate);
+                    break; 
+                case "CNY":
+                    withdraw = convert(withdraw, 5,0,rate);
+                    break; 
+        }
+
+        while(withdraw>balance)
+        {
+            System.out.println("Amount exceeds balance!");
+            withdraw = money("\nWithdraw Amount (Enter 0 to cancel): ");
+
+            if (withdraw==0)
+            {
+                System.out.println("Exiting..");
+                return balance;
+            }
+
+            switch(currency)
+            {
+                    case "PHP":
+                        withdraw = convert(withdraw,0,0,rate);
+                        break; 
+                    case "USD":
+                        withdraw = convert (withdraw,1,0,rate);
+                        break;
+                    case "JPY":
+                        withdraw = convert(withdraw,2,0,rate );
+                        break; 
+                    case "GBP":
+                        withdraw = convert(withdraw, 3,0,rate);
+                        break; 
+                    case "EUR":
+                        withdraw = convert(withdraw, 4,0,rate);
+                        break; 
+                    case "CNY":
+                        withdraw = convert(withdraw, 5,0,rate);
+                        break; 
+            }
+
+        }
+        
+
         balance -= withdraw;
         System.out.printf("\nWithdraw Amount: %.2f", withdraw); 
         System.out.printf("\nUpdated Balance: %.2f", balance);
         return balance; 
     }
+
     /*
     * @Purpose: to display the exchange rate menu 
     */
@@ -245,49 +328,14 @@ public class MP_IsyDoesIt_Java
     */
     public static double exchange_rate(double rate[])
     {
-        boolean isValid = false; 
         int input=0;
         double foreign=0.0; 
-        scanner.nextLine();
-        do
-        {
-            System.out.println("Record Exchange Rate ");
-            exchange_menu();
+        
+        System.out.println("Record Exchange Rate ");
+        exchange_menu();
+        input=valid_choice("\nSelect Foreign Currency:");
 
-            System.out.printf("\nSelect Foreign Currency: ");
-            input = scanner.nextInt();
-            if(valid_choice(input))
-            {
-                isValid = true;
-            }
-            else
-                System.out.println("Please enter a valid choice!");
-            
-
-        } while(!isValid);
-
-        isValid = false; 
-        do
-        {
-            System.out.printf("\nExchange Rate: ");
-            try
-            {
-                foreign = scanner.nextDouble();
-                if(foreign>0)
-                {
-                    isValid = true;
-                }
-                else
-                {
-                    System.out.println("Exchange rate must be greater than 0!");
-                }
-            }
-            catch (InputMismatchException e)
-            {
-                System.out.println("Please enter a valid amount! (Numbers only)");
-                scanner.next(); 
-            }
-        }while(!isValid);
+        foreign = money("\nExchange Rate: ");
 
         System.out.printf("\nExchange rate updated successfully to %.2f!\n", foreign);
 
@@ -307,8 +355,6 @@ public class MP_IsyDoesIt_Java
                 return rate [5] = foreign;
         }
 
-        
-        
         return foreign; 
     }
      /*
@@ -316,113 +362,26 @@ public class MP_IsyDoesIt_Java
     */
     public static void currency_exchange(double rate[])
     {
-        boolean isValid = false; 
         int s_currency=0, e_currency=0; 
         double source= 0.0, convert = 0.0; 
 
             System.out.println("Foreign Currency Exchange");
-            scanner.nextLine();
-            do
-            {
-                System.out.println("Source Currency Option: ");
-                exchange_menu();
+            System.out.println("Source Currency Option: ");
+            exchange_menu();
 
-                System.out.printf("\nSource Currency: ");
-                s_currency = scanner.nextInt();
-                if(valid_choice(s_currency))
-                {
-                    isValid = true;
-                }
-                else
-                    System.out.println("Please enter a valid choice!");
-            } while(!isValid);
-            
-            isValid = false; 
-            do
-            {
-                System.out.printf("\nSource Amount: ");
-                source = scanner.nextDouble();
-                try
-                {
-                    if(source>0)
-                    {
-                        isValid = true;
-                    }
-                    else
-                    {
-                        System.out.println("Source amount must be greater than 0!");
-                    }
-                }
-                catch (NumberFormatException e)
-                {
-                    System.out.println("Please enter a valid amount!(double only)");
-                }
-            }while(!isValid);
+            s_currency = valid_choice("\nSource Currency: ");
+                
+            source = money("\nSource Amount: "); 
 
-            switch(s_currency)
-            {
-                case 1:
-                    source *= rate[0]; 
-                    break;
-                case 2:
-                    source *= rate[1]; 
-                    break;
-                case 3:
-                    source *= rate[2];  
-                    break;
-                case 4:
-                    source *= rate[3]; 
-                    break;
-                case 5:
-                    source *= rate[4]; 
-                    break; 
-                case 6:
-                    source *= rate[5]; 
-                    break; 
-            }
+            System.out.println("Exchanged Currency Options: ");
+            exchange_menu();
 
+            e_currency = valid_choice("\nExchange Currency: ");
 
-            isValid = false; 
-            do
-            {
-                System.out.println("Exchanged Currency Options: ");
-                exchange_menu();
-
-                System.out.printf("\nExchange Currency: ");
-                e_currency = scanner.nextInt();
-                if(valid_choice(e_currency))
-                {
-                    isValid = true;
-                }
-                else
-                    System.out.println("Please enter a valid choice!");
-            } while(!isValid);
-
-            switch(e_currency)
-            {
-                case 1:
-                    convert = source/rate[0]; 
-                    break;
-                case 2:
-                    convert = source/rate[1]; 
-                    break;
-                case 3:
-                    convert = source/rate[2]; 
-                    break;
-                case 4:
-                    convert = source/rate[3]; 
-                    break;
-                case 5:
-                    convert = source/rate[4];  
-                    break; 
-                case 6:
-                    convert = source/rate[5];  
-                    break; 
-            }
-
-            System.out.printf("\nExchange Amount: %.2f", convert);
+            convert=convert(source, s_currency-1,e_currency-1,rate);
+              
+            System.out.printf("Exchange Amount: %.2f", convert);
         
-
     }
    
     public static void interest_amount(String name, double balance)
@@ -487,17 +446,17 @@ public class MP_IsyDoesIt_Java
             choice = main_menu();
             switch(choice)
             {
-                case 0: 
-                    isEnd = true; 
-                    break;
+                case 0:
+                    System.out.println("Exiting..");
+                    isEnd = true;
                 case 1:
                     name = register_name();
                     break;
                 case 2: 
-                    balance= deposit_amount(balance, name);
+                    balance= deposit_amount(balance, name, rate);
                     break;
                 case 3:
-                    balance= withdraw_amount(balance, name);
+                    balance= withdraw_amount(balance, name, rate);
                     break;
                 case 4:
                     currency_exchange(rate);
@@ -509,7 +468,7 @@ public class MP_IsyDoesIt_Java
                     interest_amount(name, balance);
                     break;
             } 
-            if (choice !=0 && choice!=4)
+            if ((choice >=1 && choice<=3) || (choice>=5))
             {
                 do
                 {
@@ -521,6 +480,7 @@ public class MP_IsyDoesIt_Java
                         choice2 = inputStr.charAt(0);
                         
                         if (choice2 == 'N' || choice2 == 'n') {
+                            System.out.println("Exiting..");
                             isEnd = true;
                         }
                     } else {
@@ -544,6 +504,7 @@ public class MP_IsyDoesIt_Java
                         if (choice2 == 'Y' || choice2 == 'y') {
                             currency_exchange(rate); // Call again if Y
                         } else if (choice2 == 'N' || choice2 == 'n') {
+                            System.out.println("Exiting..");
                             // Returns to main menu naturally on next main loop iteration
                         }
                     } else {
