@@ -1,17 +1,104 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #define MAX_NAME_LEN 63
 #define MAX_ACCOUNT_NUM 100
+#define MAX_TRANSACTIONS 20000
 
 // 7, because index 0 is a placeholder
 #define MAX_CURRENCIES 7
 
 typedef struct {
+    char accountName[64];
+    char accountNumber[11];
+    char date[11];
+    char time[9];
+    char currency[4];
+    double amount;
+    char type[11];
+    double currentBalance;
+} Transaction;
+
+typedef struct {
     char code[4];
     double rate;
 } Currency;
+
+typedef struct {
+	char accountName[64];
+	char accountNumber[11];
+	char date[11];
+	double totalWithdrawalAmounts;
+	int numberOfDeposits;
+	double totalDepositAmounts;
+	double turnoverVelocity;
+	int velocityAvailable;
+	int suspiciousFlag;
+} DailyActivity;
+
+/*
+===================== FUNCTION PROTOTYPES ======================
+*/
+
+void cleanInputBuffer();
+int loadTransactions(char *filename, Transaction records[], int maxCount);
+Transaction *findAccount(Transaction records[], int count, char *accountNumber);
+unsigned long long stringToAccountNumber(char *str);
+unsigned long long getNextAccountNumber(Transaction records[], int count);
+int saveTransaction(char *filename, Transaction *record);
+
+void printNavMenu();
+void printExchangeMenu();
+double convertCurrency(double amount, int source, int target, Currency rates[MAX_CURRENCIES]);
+
+int getValidChoice(int lb, int ub);
+int getValidChoiceClean(int lb, int ub);
+double getValidAmount();
+void getValidName(char *nameBuffer, int maxLen);
+int getValidYN();
+
+int validateTransaction(Transaction *record);
+int createAccountTransaction(Transaction *record, unsigned long long number, double deposit);
+int getValidCurrency(Currency rates[MAX_CURRENCIES]);
+
+int registerAccount(Transaction records[], int *count, int maxCount, char *filename);
+int setTransactionDateTime(Transaction *record);
+
+int depositAmount(Transaction records[], int *count, int maxCount,
+                  char *filename, Currency rates[MAX_CURRENCIES]);
+
+int withdrawAmount(Transaction records[], int *count, int maxCount,
+                   char *filename, Currency rates[MAX_CURRENCIES]);
+
+void currencyExchange(Currency rates[MAX_CURRENCIES]);
+void recordExchangeRates(Currency rates[MAX_CURRENCIES]);
+int showInterestAmount(Transaction records[], int count);
+
+void transactionSelect(int choice, Currency rates[MAX_CURRENCIES],
+                       Transaction records[], int *count,
+                       int maxCount, char *filename);
+
+void printReportMenu();
+void generateReportsMenu(Transaction records[], int *count, int maxCount, char *filename);
+
+long long getTransactionDateValue(Transaction *record);
+int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes[]);
+double calculateExpectedInterest(double startingBalance);
+int filterInterestAccounts(Transaction records[], int accountIndexes[], int accountCount, double expectedInterest[]);
+void sortInterestAccounts(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
+int exportInterestReport(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
+int generateInterestReport(Transaction records[], int count);
+int getDailyActivities(Transaction records[], int count, DailyActivity activities[]);
+void calculateRiskFlags(DailyActivity activities[], int activityCount);
+void sortDailyActivities(DailyActivity activities[], int activityCount);
+int exportSuspiciousReport(DailyActivity activities[], int activityCount);
+int generateSuspiciousReport(Transaction records[], int count);
+
+/*
+===================== FUNCTION PROTOTYPES ======================
+*/
 
 /********************
 Last names: Ilagan, Serios, Yardan
@@ -38,6 +125,207 @@ void cleanInputBuffer(){
 	while ((c = getchar()) != '\n' && c != EOF);
 }
 
+int loadTransactions(char *filename, Transaction records[], int maxCount){
+	FILE *file;
+	Transaction *ptr;
+	int i = 0;
+	int fields = 0;
+	int totalRows = 0;
+	int invalidRows = 0;
+	int filteredRows = 0;
+	int lineLength = 0;
+	char line[256] = {0};
+	char endChar = '\0';
+	char extraChar = '\0';
+
+	file = fopen(filename, "r");
+
+	if(file == NULL){
+		printf("Cannot open CSV.\n");
+		return -1;
+	}
+
+	fscanf(file, "%*[^\n]");
+	fscanf(file, "%*c");
+
+	while(i < maxCount){
+		line[0] = '\0';
+		fields = fscanf(file, "%255[^\n]%c", line, &endChar);
+
+		if(fields == EOF){
+			break;
+		}
+
+		totalRows++;
+
+		if(fields == 0){
+			fscanf(file, "%c", &endChar);
+			invalidRows++;
+			printf("Invalid transaction at row %d.\n", totalRows + 1);
+			continue;
+		}
+
+		if(fields == 2 && endChar != '\n'){
+			while(fscanf(file, "%c", &endChar) == 1 && endChar != '\n');
+			invalidRows++;
+			printf("Invalid transaction at row %d.\n", totalRows + 1);
+			continue;
+		}
+
+		lineLength = strlen(line);
+
+		if(lineLength > 0 && line[lineLength - 1] == '\r'){
+			line[lineLength - 1] = '\0';
+		}
+
+		ptr = records + i;
+
+		fields = sscanf(line, "%63[^,],%10[^,],%10[^,],%8[^,],%3[^,],%lf,%10[^,],%lf%c",
+			ptr->accountName,
+			ptr->accountNumber,
+			ptr->date,
+			ptr->time,
+			ptr->currency,
+			&ptr->amount,
+			ptr->type,
+			&ptr->currentBalance,
+			&extraChar
+		);
+
+		if(fields != 8){
+			invalidRows++;
+			printf("Invalid transaction at row %d.\n", totalRows + 1);
+			continue;
+		}
+
+		if(strcmp(ptr->currency, "PHP") != 0){
+			filteredRows++;
+			continue;
+		}
+
+		if(validateTransaction(ptr) == 0){
+			invalidRows++;
+			printf("Invalid transaction at row %d.\n", totalRows + 1);
+			continue;
+		}
+
+		i++;
+	}
+
+	fclose(file);
+
+	printf("Total rows: %d\n", totalRows);
+	printf("Invalid rows: %d\n", invalidRows);
+	printf("Filtered rows: %d\n", filteredRows);
+	printf("Accepted rows: %d\n", i);
+
+	return i;
+}
+
+Transaction *findAccount(Transaction records[], int count, char *accountNumber){
+	int i = 0;
+	
+	for(i = count - 1; i >= 0; i--){
+		if (strcmp((records+i)->accountNumber, accountNumber) == 0){
+			return records + i;
+		}
+	}
+	
+	return NULL;
+}
+
+unsigned long long stringToAccountNumber(char *str){
+    unsigned long long number = 0;
+    char *ptr = str;
+
+    if(strlen(str) != 10){
+        printf("Invalid account number length.\n");
+        return 0;
+    }
+
+    while(*ptr != '\0'){
+        if(*ptr < '0' || *ptr > '9'){
+            printf("Invalid account number.\n");
+            return 0;
+        }
+
+        number = number * 10 + (*ptr - '0');
+        ptr++;
+    }
+
+    return number;
+}
+
+unsigned long long getNextAccountNumber(Transaction records[], int count){
+	unsigned long long highest = 0;
+	unsigned long long current = 0;
+	unsigned long long next = 0;
+	unsigned long long temp = 0;
+	
+	int digits = 0;
+	int i = 0;
+	
+	for(i = 0; i < count; i++){
+		current = stringToAccountNumber((records+i)->accountNumber);
+		
+		if(current == 0){
+			printf("Invalid account number.\n");
+			return 0;
+		}
+		
+		if(current>highest){
+			highest = current;
+		}
+	}
+
+	next = highest + 1;
+	temp = next;
+
+	while(temp > 0){
+		temp /= 10;
+		digits++;
+	}
+	
+	if(digits != sizeof(records[0].accountNumber) - 1){
+		printf("Account number limits reached.\n");
+		return 0;
+	}
+	
+	return next;
+}
+
+int saveTransaction(char *filename, Transaction *record){
+    FILE *file;
+	int saveResult = 0;
+    file = fopen(filename, "a");
+
+    if(file == NULL){
+        printf("Cannot open CSV.\n");
+        return saveResult;
+    }
+
+    if(fprintf(file, "%s,%s,%s,%s,%s,%.2lf,%s,%.2lf\n",
+        record->accountName,
+        record->accountNumber,
+        record->date,
+        record->time,
+        record->currency,
+        record->amount,
+        record->type,
+        record->currentBalance
+    ) < 0){
+        fclose(file);
+        return saveResult;
+    }
+
+    if(fclose(file) != 0){
+        return saveResult;
+    }
+	
+	saveResult = 1;
+    return saveResult;
+}
+
 /**
  * @brief Prints a purely visual guide on the menu navigation.   
  * 
@@ -47,12 +335,13 @@ void cleanInputBuffer(){
 
 void printNavMenu(){
 	printf("Select Transaction:\n");
-	printf("[1] Register Account Name\n");
+	printf("[1] Register Account\n");
 	printf("[2] Deposit Amount\n");
 	printf("[3] Withdraw Amount\n");
 	printf("[4] Currency Exchange\n");
 	printf("[5] Record Exchange Rates\n");
 	printf("[6] Show Interest Amount\n");
+	printf("[7] Generate Reports\n");
 	printf("[0] Exit Transaction\n\n");
 }
 
@@ -70,6 +359,20 @@ void printExchangeMenu(){
 	printf("[5] Euro (EUR)\n");
 	printf("[6] Chinese Yuan Renminni (CNY)\n\n");
 }
+
+/**
+ * @brief Prints a purely visual guide on report generation.   
+ * 
+ * @warning Includes a double newline at the end of its printing.
+ */
+ 
+void printReportMenu(){
+	printf("\nGenerate Reports\n");
+	printf("[1] Load the file\n");
+	printf("[2] Generate Reports\n");
+	printf("[0] Back\n\n");
+}
+
 
 /**
  * @brief Converts a source currency amount to a target currency
@@ -239,6 +542,150 @@ int getValidYN(){
     return result;
 }
 
+
+int validateTransaction(Transaction *record){
+	int validFlag = 1;
+	int i = 0;
+	int day = 0, month = 0, year = 0;
+	int hour = 0, minute = 0, second = 0;
+	int daysInMonth[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+	int timeLength = strlen(record->time);
+	int colon1 = 2, colon2 = 5;
+
+	if(strlen(record->accountNumber) != 10){
+		validFlag = 0;
+	}
+
+	for(i = 0; record->accountNumber[i] != '\0'; i++){
+		if(record->accountNumber[i] < '0' || record->accountNumber[i] > '9'){
+			validFlag = 0;
+		}
+	}
+
+	if(record->accountName[0] == '\0'){
+		validFlag = 0;
+	}
+
+	if(strlen(record->date) != 10){
+		validFlag = 0;
+	}
+
+	if(record->date[2] != '/' || record->date[5] != '/'){
+		validFlag = 0;
+	}
+
+	for(i = 0; i < 10; i++){
+		if(i != 2 && i != 5){
+			if(record->date[i] < '0' || record->date[i] > '9'){
+				validFlag = 0;
+			}
+		}
+	}
+
+	if(sscanf(record->date, "%2d/%2d/%4d", &day, &month, &year) != 3){
+		validFlag = 0;
+	}
+
+	if(year < 1 || month < 1 || month > 12 || day < 1){
+		validFlag = 0;
+	}
+
+	if(year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)){
+		daysInMonth[1] = 29;
+	}
+
+	if(month >= 1 && month <= 12){
+		if(day > daysInMonth[month - 1]){
+			validFlag = 0;
+		}
+	}
+
+	if(timeLength == 7){
+		colon1 = 1;
+		colon2 = 4;
+	}
+
+	if(timeLength != 7 && timeLength != 8){
+		validFlag = 0;
+	}
+
+	if(record->time[colon1] != ':' || record->time[colon2] != ':'){
+		validFlag = 0;
+	}
+
+	for(i = 0; i < timeLength; i++){
+		if(i != colon1 && i != colon2){
+			if(record->time[i] < '0' || record->time[i] > '9'){
+				validFlag = 0;
+			}
+		}
+}
+
+	if(sscanf(record->time, "%2d:%2d:%2d", &hour, &minute, &second) != 3){
+		validFlag = 0;
+	}
+
+	if(hour < 0 || hour > 23 || minute < 0 || minute > 59 ||
+	   second < 0 || second > 59){
+		validFlag = 0;
+	}
+
+	if(strcmp(record->currency, "PHP") != 0){
+		validFlag = 0;
+	}
+
+	if(strcmp(record->type, "deposit") != 0 && strcmp(record->type, "withdrawal") != 0){
+		validFlag = 0;
+	}
+
+	if(!isfinite(record->amount) || record->amount <= 0){
+		validFlag = 0;
+	}
+
+	if(!isfinite(record->currentBalance) || record->currentBalance < 0){
+		validFlag = 0;
+	}
+
+	return validFlag;
+}
+
+int createAccountTransaction(Transaction *record, unsigned long long number, double deposit){
+    time_t currentTime = time(NULL);
+    struct tm *dateTime = localtime(&currentTime);
+    int i = 0;
+	int creationResult = 0;
+	
+    if(dateTime == NULL){
+        return creationResult;
+    }
+
+    for(i = 9; i >= 0; i--){
+        record->accountNumber[i] = '0' + (number % 10);
+        number /= 10;
+    }
+
+    record->accountNumber[10] = '\0';
+
+    strcpy(record->currency, "PHP");
+    strcpy(record->type, "deposit");
+
+    record->amount = deposit;
+    record->currentBalance = deposit;
+
+    if(strftime(record->date, sizeof(record->date),
+        "%d/%m/%Y", dateTime) == 0){
+        return creationResult;
+    }
+
+    if(strftime(record->time, sizeof(record->time),
+        "%H:%M:%S", dateTime) == 0){
+        return creationResult;
+    }
+	
+	creationResult = 1;
+    return creationResult;
+}
+
 /**
  * @brief   Prompts the user for a valid, registered currency code.
  * 
@@ -288,13 +735,199 @@ int getValidCurrency(Currency rates[MAX_CURRENCIES]){
  * @param[out]    accountName  String to be modified according to the user's input.
  */
 
-void registerAccountName(char *accountName){
-	printf("Register Account Name\n");
-	printf("Account Name: ");
-	getValidName(accountName, MAX_NAME_LEN + 1);
-	printf("\n***\n");
-	printf("Account Name = %s\n", accountName);
+
+int registerAccount(Transaction records[], int *count, int maxCount, char *filename){
+    Transaction newTransaction = {0};
+    double initialDeposit = 0.0;
+    unsigned long long newNumber = 0;
+	int registerResult = 0;
+
+    if(*count >= maxCount){
+        printf("Transaction limit reached.\n");
+        return registerResult;
+    }
+
+    printf("Register Account\n");
+    printf("Account Name: ");
+    getValidName(newTransaction.accountName, MAX_NAME_LEN + 1);
+
+    printf("Initial Deposit: ");
+    initialDeposit = getValidAmount();
+
+    while(initialDeposit < 5000.00 || !isfinite(initialDeposit)){
+        printf("Minimum initial deposit is PHP 5000.00.\n");
+        printf("Initial Deposit: ");
+        initialDeposit = getValidAmount();
+    }
+
+    newNumber = getNextAccountNumber(records, *count);
+
+    if(newNumber == 0){
+        return registerResult;
+    }
+
+    if(!createAccountTransaction(&newTransaction, newNumber, initialDeposit)){
+        return registerResult;
+    }
+
+    if(!saveTransaction(filename, &newTransaction)){
+        printf("Cannot save account.\n");
+        return registerResult;
+    }
+
+    records[*count] = newTransaction;
+    (*count)++;
+
+    printf("\nAccount registered successfully!\n");
+    printf("Account Name: %s\n", newTransaction.accountName);
+    printf("Account Number: %s\n", newTransaction.accountNumber);
+    printf("Current Balance: %.2lf\n", newTransaction.currentBalance);
+
+	registerResult = 1;
+    return registerResult;
 }
+
+
+int setTransactionDateTime(Transaction *record){
+    time_t currentTime = time(NULL);
+    struct tm *dateTime = localtime(&currentTime);
+
+    if(dateTime == NULL){
+        return 0;
+    }
+
+    if(strftime(record->date, sizeof(record->date),
+        "%d/%m/%Y", dateTime) == 0){
+        return 0;
+    }
+
+    if(strftime(record->time, sizeof(record->time),
+        "%H:%M:%S", dateTime) == 0){
+        return 0;
+    }
+
+    return 1;
+}
+
+void calculateRiskFlags(DailyActivity activities[], int activityCount){
+	int i = 0;
+
+	for(i = 0; i < activityCount; i++){
+		if(activities[i].totalDepositAmounts > 0){
+			activities[i].turnoverVelocity = (activities[i].totalWithdrawalAmounts / activities[i].totalDepositAmounts) * 100.0;
+			activities[i].velocityAvailable = 1;
+		} else {
+			activities[i].turnoverVelocity = 0.0;
+			activities[i].velocityAvailable = 0;
+		}
+
+		if(activities[i].totalWithdrawalAmounts >= 500000.00 ||(activities[i].velocityAvailable && activities[i].turnoverVelocity >= 90.0)){
+			activities[i].suspiciousFlag = 1;
+		} else {
+			activities[i].suspiciousFlag = 0;
+		}
+	}
+}
+
+
+int getDailyActivities(Transaction records[], int count, DailyActivity activities[]){
+	int activityCount = 0;
+	int i = 0, j = 0;
+
+	for(i = 0; i < count; i++){
+		for(j = 0; j < activityCount; j++){
+			if(strcmp(records[i].accountNumber, activities[j].accountNumber) == 0 &&
+			   strcmp(records[i].date, activities[j].date) == 0){
+				break;
+			}
+		}
+
+		if(j == activityCount){
+			strcpy(activities[j].accountName, records[i].accountName);
+			strcpy(activities[j].accountNumber, records[i].accountNumber);
+			strcpy(activities[j].date, records[i].date);
+
+			activities[j].totalWithdrawalAmounts = 0.0;
+			activities[j].numberOfDeposits = 0;
+			activities[j].totalDepositAmounts = 0.0;
+			activities[j].turnoverVelocity = 0.0;
+			activities[j].velocityAvailable = 0;
+			activities[j].suspiciousFlag = 0;
+
+			activityCount++;
+		}
+
+		if(strcmp(records[i].type, "deposit") == 0){
+			activities[j].numberOfDeposits++;
+			activities[j].totalDepositAmounts += records[i].amount;
+		} else if(strcmp(records[i].type, "withdrawal") == 0){
+			activities[j].totalWithdrawalAmounts += records[i].amount;
+		}
+	}
+
+	return activityCount;
+}
+
+
+void sortDailyActivities(DailyActivity activities[], int activityCount){
+	DailyActivity temp;
+	int dateValues[MAX_TRANSACTIONS];
+
+	int i = 0, j = 0;
+	int day = 0, month = 0, year = 0;
+	int tempDate = 0;
+	int swapFlag = 0;
+
+	for(i = 0; i < activityCount; i++){
+		sscanf(activities[i].date, "%2d/%2d/%4d", &day, &month, &year);
+		dateValues[i] = year * 10000 + month * 100 + day;
+	}
+
+	for(i = 0; i < activityCount; i++){
+		for(j = i + 1; j < activityCount; j++){
+			swapFlag = 0;
+
+			if(dateValues[j] < dateValues[i]){
+				swapFlag = 1;
+			} else if(dateValues[j] == dateValues[i]){
+				if(activities[j].suspiciousFlag > activities[i].suspiciousFlag){
+					swapFlag = 1;
+				} else if(activities[j].suspiciousFlag == activities[i].suspiciousFlag && strcmp(activities[j].accountNumber, activities[i].accountNumber) < 0){
+					swapFlag = 1;
+				}
+			}
+
+			if(swapFlag){
+				temp = activities[i];
+				activities[i] = activities[j];
+				activities[j] = temp;
+
+				tempDate = dateValues[i];
+				dateValues[i] = dateValues[j];
+				dateValues[j] = tempDate;
+			}
+		}
+	}
+}
+
+int generateSuspiciousReport(Transaction records[], int count){
+	static DailyActivity activities[MAX_TRANSACTIONS];
+	int activityCount = 0;
+
+	if(count <= 0 || count > MAX_TRANSACTIONS){
+		printf("No valid transactions available.\n");
+		return 0;
+	}
+
+	activityCount = getDailyActivities(records, count, activities);
+
+	calculateRiskFlags(activities, activityCount);
+
+	sortDailyActivities(activities, activityCount);
+
+	return exportSuspiciousReport(activities, activityCount);
+}
+
 
 /**
  * @brief Deposits a positive amount into the user's account,
@@ -308,28 +941,88 @@ void registerAccountName(char *accountName){
  *       of the deposited amount.
  */
 
-void depositAmount(char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
-	double valDeposit = -1;
-	int currencyChoice = -1;
-	
-	printf("Deposit Amount\n");
-	printf("Account Name: %s\n", accountName);
-	printf("Current Balance: %.2lf\n", *balance);
-	currencyChoice = getValidCurrency(rates);
-	
-	printf("Deposit Amount: ");
-	valDeposit = getValidAmount();
-	while(valDeposit <= 0 || !isfinite(valDeposit)){
-		printf("Please enter a valid amount.\n");
-		valDeposit = getValidAmount();
-	}
-	*balance += convertCurrency(valDeposit, currencyChoice, 1, rates);
-	printf("\n***\n");
-	printf("Account Name = %s\n", accountName);	
-	printf("Deposit Amount = %.2lf %s\n", valDeposit, rates[currencyChoice].code);
-	printf("Updated Balance = %.2lf\n", *balance);
-}
 
+int depositAmount(Transaction records[], int *count, int maxCount,
+                  char *filename, Currency rates[MAX_CURRENCIES]){
+    Transaction *account;
+    Transaction newTransaction;
+    char accountNumber[12] = {0};
+    double valDeposit = 0.0;
+    double amountPHP = 0.0;
+    int currencyChoice = -1;
+
+    if(*count >= maxCount){
+        printf("Transaction limit reached.\n");
+        return 0;
+    }
+
+    printf("Deposit Amount\n");
+    printf("Account Number: ");
+
+    if(scanf("%11s", accountNumber) != 1){
+        cleanInputBuffer();
+        return 0;
+    }
+
+    cleanInputBuffer();
+
+    if(strlen(accountNumber) != 10 ||
+       stringToAccountNumber(accountNumber) == 0){
+        printf("Invalid account number.\n");
+        return 0;
+    }
+
+    account = findAccount(records, *count, accountNumber);
+
+    if(account == NULL){
+        printf("Account not found.\n");
+        return 0;
+    }
+
+    printf("Account Name: %s\n", account->accountName);
+    printf("Current Balance: %.2lf\n", account->currentBalance);
+
+    currencyChoice = getValidCurrency(rates);
+
+    printf("Deposit Amount: ");
+    valDeposit = getValidAmount();
+
+    amountPHP = round(convertCurrency(valDeposit, currencyChoice, 1, rates) * 100.0) / 100.0;
+
+    while(valDeposit <= 0 || !isfinite(valDeposit) ||
+          amountPHP <= 0 || !isfinite(amountPHP) ||
+          !isfinite(account->currentBalance + amountPHP)){
+        printf("Please enter a valid amount.\n");
+        valDeposit = getValidAmount();
+        amountPHP = round(convertCurrency(valDeposit, currencyChoice, 1, rates) * 100.0) / 100.0;
+    }
+
+    newTransaction = *account;
+
+    strcpy(newTransaction.currency, "PHP");
+    strcpy(newTransaction.type, "deposit");
+
+    newTransaction.amount = amountPHP;
+    newTransaction.currentBalance = account->currentBalance + amountPHP;
+
+    if(!setTransactionDateTime(&newTransaction)){
+        return 0;
+    }
+
+    if(!saveTransaction(filename, &newTransaction)){
+        printf("Cannot save deposit.\n");
+        return 0;
+    }
+
+    records[*count] = newTransaction;
+    (*count)++;
+
+    printf("\nDeposit Amount = %.2lf %s\n",
+           valDeposit, rates[currencyChoice].code);
+    printf("Updated Balance = %.2lf\n", newTransaction.currentBalance);
+
+    return 1;
+}
 /**
  * @brief Withdraws an amount from the user's account,
  *        converting foreign currencies into PHP when necessary. [REQ-0005], [REQ-0008]
@@ -344,31 +1037,89 @@ void depositAmount(char *accountName, double *balance, Currency rates[MAX_CURREN
  * @warning Withdrawals exceeding the available balance are rejected.
  */
  
-void withdrawAmount(char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
-	double valWithdraw = -1;
-	int currencyChoice = -1;
-	double totalWithdraw = 0.0;
-	
-	printf("Withdraw Amount\n");
-	printf("Account Name: %s\n", accountName);
-	printf("Current Balance: %.2lf\n", *balance);
-	currencyChoice = getValidCurrency(rates);
-	
-	printf("\nWithdraw Amount: ");
-	valWithdraw = getValidAmount();
-	totalWithdraw = convertCurrency(valWithdraw, currencyChoice, 1, rates);
-	
-	while(valWithdraw <= 0 || !isfinite(valWithdraw) || !isfinite(totalWithdraw) || totalWithdraw > *balance){
-		printf("Please enter a valid amount.\n");
-		valWithdraw = getValidAmount();
-		totalWithdraw = convertCurrency(valWithdraw, currencyChoice, 1, rates);
-	}
-	*balance -= totalWithdraw;
-	printf("\n***\n");
-	printf("Account Name = %s\n", accountName);	
-	printf("Withdraw Amount = %.2lf %s\n", valWithdraw, rates[currencyChoice].code);
-	printf("Updated Balance = %.2lf\n", *balance);	
+int withdrawAmount(Transaction records[], int *count, int maxCount,
+                   char *filename, Currency rates[MAX_CURRENCIES]){
+    Transaction *account;
+    Transaction newTransaction;
+    char accountNumber[12] = {0};
+    double valWithdraw = -1;
+    double amountPHP = 0.0;
+    int currencyChoice = -1;
+
+    if(*count >= maxCount){
+        printf("Transaction limit reached.\n");
+        return 0;
+    }
+
+    printf("Withdraw Amount\n");
+    printf("Account Number: ");
+
+    if(scanf("%11s", accountNumber) != 1){
+        cleanInputBuffer();
+        return 0;
+    }
+
+    cleanInputBuffer();
+
+    if(strlen(accountNumber) != 10 ||
+       stringToAccountNumber(accountNumber) == 0){
+        printf("Invalid account number.\n");
+        return 0;
+    }
+
+    account = findAccount(records, *count, accountNumber);
+
+    if(account == NULL){
+        printf("Account not found.\n");
+        return 0;
+    }
+
+    printf("Account Name: %s\n", account->accountName);
+    printf("Current Balance: %.2lf\n", account->currentBalance);
+
+    currencyChoice = getValidCurrency(rates);
+
+    printf("\nWithdraw Amount: ");
+    valWithdraw = getValidAmount();
+
+    amountPHP = round(convertCurrency(valWithdraw, currencyChoice, 1, rates) * 100.0) / 100.0;
+
+    while(valWithdraw <= 0 || !isfinite(valWithdraw) ||
+          amountPHP <= 0 || !isfinite(amountPHP) ||
+          amountPHP > account->currentBalance){
+        printf("Please enter a valid amount.\n");
+        valWithdraw = getValidAmount();
+        amountPHP = round(convertCurrency(valWithdraw, currencyChoice, 1, rates) * 100.0) / 100.0;
+    }
+
+    newTransaction = *account;
+
+    strcpy(newTransaction.currency, "PHP");
+    strcpy(newTransaction.type, "withdrawal");
+
+    newTransaction.amount = amountPHP;
+    newTransaction.currentBalance = account->currentBalance - amountPHP;
+
+    if(!setTransactionDateTime(&newTransaction)){
+        return 0;
+    }
+
+    if(!saveTransaction(filename, &newTransaction)){
+        printf("Cannot save withdrawal.\n");
+        return 0;
+    }
+
+    records[*count] = newTransaction;
+    (*count)++;
+
+    printf("\n***\n");
+    printf("Account Name = %s\n", account->accountName);
+    printf("Withdraw Amount = %.2lf %s\n", valWithdraw, rates[currencyChoice].code);
+    printf("Updated Balance = %.2lf\n", newTransaction.currentBalance);
+
+    return 1;
 }
+
 
 /**
  * @brief Converts a specified amount between two supported currencies. [REQ-0003]
@@ -461,28 +1212,333 @@ void recordExchangeRates(Currency rates[MAX_CURRENCIES]){
  *       without modifying the actual account balance.
  */
 
-void showInterestAmount(char* accountName, double balance){
-	int numDays = 0;
-	int i = 0;
-	double annualRate = 0.05;
-	double dailyInterest = -1; 
-	double eodBalance = balance;
+int showInterestAmount(Transaction records[], int count){
+    Transaction *account;
+    char accountNumber[12] = {0};
+    int numDays = 0;
+    int i = 0;
+    double annualRate = 0.05;
+    double dailyInterest = 0.0;
+    double eodBalance = 0.0;
+
+    printf("Show Interest Amount\n");
+    printf("Account Number: ");
+
+    if(scanf("%11s", accountNumber) != 1){
+        cleanInputBuffer();
+        return 0;
+    }
+
+    cleanInputBuffer();
+
+    if(strlen(accountNumber) != 10 ||
+       stringToAccountNumber(accountNumber) == 0){
+        printf("Invalid account number.\n");
+        return 0;
+    }
+
+    account = findAccount(records, count, accountNumber);
+
+    if(account == NULL){
+        printf("Account not found.\n");
+        return 0;
+    }
+
+    eodBalance = account->currentBalance;
+
+    printf("Account Name: %s\n", account->accountName);
+    printf("Current Balance: %.2lf\n", eodBalance);
+    printf("Currency: PHP\n");
+    printf("Interest Rate: 5%%\n\n");
+
+    printf("Total number of days: ");
+    numDays = getValidChoiceClean(1, 3650);
+
+    printf("\n%-5s | %-10s | %-10s\n", "Day", "Interest", "Balance");
+
+    for(i = 1; i <= numDays; i++){
+        dailyInterest = round(eodBalance * (annualRate / 365) * 100.0) / 100.0;
+        eodBalance += dailyInterest;
+
+        printf("%-5d | %-10.2lf | %-10.2lf\n",
+               i, dailyInterest, eodBalance);
+    }
+    return 1;
+}
+
+void generateReportsMenu(Transaction records[], int *count, int maxCount, char *filename){
+	int runningFlag = 1;
+	int choice = 0;
+	int loadedCount = 0;
 	
-	printf("Show Interest Amount\n");
-	printf("Account Name: %s\n", accountName);
-	printf("Current Balance: %.2lf\n", balance);
-	printf("Currency: PHP\n");
-	printf("Interest Rate: 5%%\n\n");
-	
-	printf("Total number of days: ");
-	numDays = getValidChoiceClean(1, 3650);
-	printf("\n%-5s | %-10s | %-10s\n", "Day", "Interest", "Balance");
-	for(i = 1; i <= numDays; i++){
-		dailyInterest = round(eodBalance*(annualRate/365) * 100.0) / 100.0;
-		eodBalance += dailyInterest;
-		printf("%-5d | %-10.2lf | %-10.2lf\n", i, dailyInterest, eodBalance);
+	while (runningFlag){
+		printReportMenu();
+		printf("Enter choice: ");
+		choice = getValidChoiceClean(0,2);
+		
+		switch(choice){
+			case 1:
+				printf("Processing dataset...\n");
+				loadedCount = loadTransactions(filename, records, maxCount);
+				
+				if (loadedCount < 0){
+					printf("Error in loading dataset.\n");
+				} else {
+					*count = loadedCount;
+					printf("Dataset loaded! %d PHP transactions.\n", *count);
+				}
+				break;
+			case 2:
+				if(*count <= 0){
+					printf("There is no currently loaded dataset.\n");
+				} else {
+					generateInterestReport(records, *count);
+					generateSuspiciousReport(records, *count);
+				}
+				break;
+			case 0:
+				runningFlag = 0;
+				break;
+		}
 	}
 }
+
+
+long long getTransactionDateValue(Transaction *record){
+	int dateDay = 0, dateMonth = 0, dateYear = 0;
+	int hour = 0, minute = 0, second = 0;
+	long long dateValue = 0;
+
+	sscanf(record->date, "%2d/%2d/%4d", &dateDay, &dateMonth, &dateYear);
+	sscanf(record->time, "%2d:%2d:%2d", &hour, &minute, &second);
+
+	dateValue = dateYear;
+	dateValue = dateValue * 100 + dateMonth;
+	dateValue = dateValue * 100 + dateDay;
+	dateValue = dateValue * 100 + hour;
+	dateValue = dateValue * 100 + minute;
+	dateValue = dateValue * 100 + second;
+
+	return dateValue;
+}
+
+int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes[]){
+	static long long accountDates[MAX_TRANSACTIONS];
+	long long dateValue = 0;
+	int accountCount = 0;
+	int i = 0, j = 0;
+
+	for(i = 0; i < count; i++){
+		dateValue = getTransactionDateValue(records + i);
+
+		for(j = 0; j < accountCount; j++){
+			if(strcmp(records[i].accountNumber,
+				records[accountIndexes[j]].accountNumber) == 0){
+				break;
+			}
+		}
+
+		if(j == accountCount){
+			accountIndexes[accountCount] = i;
+			accountDates[accountCount] = dateValue;
+			accountCount++;
+		} else if(dateValue >= accountDates[j]){
+			accountIndexes[j] = i;
+			accountDates[j] = dateValue;
+		}
+	}
+
+	return accountCount;
+}
+
+double calculateExpectedInterest(double startingBalance){
+	double balance = startingBalance;
+	double dailyInterest = 0.0;
+	int day = 0;
+
+	for(day = 0; day < 30; day++){
+		dailyInterest = round(balance * (0.05 / 365.0) * 100.0) / 100.0;
+		balance += dailyInterest;
+	}
+
+	return round((balance - startingBalance) * 100.0) / 100.0;
+}
+
+int filterInterestAccounts(Transaction records[], int accountIndexes[],
+						   int accountCount, double expectedInterest[]){
+	int qualifiedCount = 0;
+	int i = 0;
+
+	for(i = 0; i < accountCount; i++){
+		if(records[accountIndexes[i]].currentBalance >= 10000.00){
+			expectedInterest[qualifiedCount] =
+				calculateExpectedInterest(records[accountIndexes[i]].currentBalance);
+
+			accountIndexes[qualifiedCount] = accountIndexes[i];
+			qualifiedCount++;
+		}
+	}
+
+	return qualifiedCount;
+}
+
+void sortInterestAccounts(Transaction records[], int accountIndexes[],
+						  double expectedInterest[], int qualifiedCount){
+	int i = 0, j = 0;
+	int tempIndex = 0;
+	double tempInterest = 0.0;
+
+	for(i = 0; i < qualifiedCount; i++){
+		for(j = i + 1; j < qualifiedCount; j++){
+			if(expectedInterest[j] > expectedInterest[i] ||
+				(expectedInterest[j] == expectedInterest[i] &&
+				strcmp(records[accountIndexes[j]].accountNumber,
+				records[accountIndexes[i]].accountNumber) < 0)){
+
+				tempIndex = accountIndexes[i];
+				accountIndexes[i] = accountIndexes[j];
+				accountIndexes[j] = tempIndex;
+
+				tempInterest = expectedInterest[i];
+				expectedInterest[i] = expectedInterest[j];
+				expectedInterest[j] = tempInterest;
+			}
+		}
+	}
+}
+
+int exportInterestReport(Transaction records[], int accountIndexes[],
+						 double expectedInterest[], int qualifiedCount){
+	FILE *file;
+	Transaction *account;
+	int i = 0;
+
+	file = fopen("report2_interest_expense_projection.csv", "w");
+
+	if(file == NULL){
+		printf("Cannot create Report 2 CSV.\n");
+		return 0;
+	}
+
+	fprintf(file, "AccountName,CurrentBalance,ExpectedInterest\n");
+
+	printf("\nReport 2: Interest Expense Projection\n");
+	printf("%-24s %-18s %-18s\n",
+		"AccountName", "CurrentBalance", "ExpectedInterest");
+
+	for(i = 0; i < qualifiedCount; i++){
+		account = records + accountIndexes[i];
+
+		fprintf(file, "%s,%.2f,%.2f\n",
+			account->accountName,
+			account->currentBalance,
+			expectedInterest[i]);
+
+		if(i < 2){
+			printf("%-24s %-18.2f %-18.2f\n",
+				account->accountName,
+				account->currentBalance,
+				expectedInterest[i]);
+		}
+	}
+
+	if(fclose(file) != 0){
+		printf("Error saving Report 2 CSV.\n");
+		return 0;
+	}
+
+	printf("(Full table exported to report2_interest_expense_projection.csv)\n");
+	printf("Eligible accounts: %d\n", qualifiedCount);
+
+	return 1;
+}
+
+
+int exportSuspiciousReport(DailyActivity activities[], int activityCount){
+	FILE *file;
+	int i = 0;
+	char velocityText[32];
+	char *riskLevel;
+
+	file = fopen("report3_suspicious_client_behavior.csv", "w");
+
+	if(file == NULL){
+		printf("Cannot create Report 3 CSV.\n");
+		return 0;
+	}
+
+	fprintf(file, "AccountName,Date,TotalWithdrawalAmounts,NumberOfDeposits,TotalDepositAmounts,TurnoverVelocity (%%),RiskFlagLevel\n");
+
+	printf("\nReport 3: Suspicious Client Behavior\n");
+	printf("%-24s %-12s %18s %12s %18s %18s %-12s\n", "AccountName", "Date", "Withdrawals", "Deposits", "Deposit Total", "Velocity (%)", "Risk");
+
+	for(i = 0; i < activityCount; i++){
+		if(activities[i].velocityAvailable){
+			snprintf(velocityText, sizeof(velocityText), "%.2f", activities[i].turnoverVelocity);
+		} else {
+			strcpy(velocityText, "N/A");
+		}
+
+		if(activities[i].suspiciousFlag){
+			riskLevel = "Suspicious";
+		} else {
+			riskLevel = "Normal";
+		}
+
+		fprintf(file, "%s,%s,%.2f,%d,%.2f,%s,%s\n",
+			activities[i].accountName,
+			activities[i].date,
+			activities[i].totalWithdrawalAmounts,
+			activities[i].numberOfDeposits,
+			activities[i].totalDepositAmounts,
+			velocityText,
+			riskLevel);
+
+		if(i < 2){
+			printf("%-24s %-12s %18.2f %12d %18.2f %18s %-12s\n",
+				activities[i].accountName,
+				activities[i].date,
+				activities[i].totalWithdrawalAmounts,
+				activities[i].numberOfDeposits,
+				activities[i].totalDepositAmounts,
+				velocityText,
+				riskLevel);
+		}
+	}
+
+	if(fclose(file) != 0){
+		printf("Error saving Report 3 CSV.\n");
+		return 0;
+	}
+
+	printf("(Full table exported to report3_suspicious_client_behavior.csv)\n");
+	printf("Daily activities: %d\n", activityCount);
+
+	return 1;
+}
+
+
+int generateInterestReport(Transaction records[], int count){
+	static int accountIndexes[MAX_TRANSACTIONS];
+	static double expectedInterest[MAX_TRANSACTIONS];
+	int accountCount = 0;
+	int qualifiedCount = 0;
+
+	if(count <= 0 || count > MAX_TRANSACTIONS){
+		printf("No valid transactions available.\n");
+		return 0;
+	}
+
+	accountCount = getLatestAccountIndexes(records, count, accountIndexes);
+
+	qualifiedCount = filterInterestAccounts(records, accountIndexes,
+		accountCount, expectedInterest);
+
+	sortInterestAccounts(records, accountIndexes, expectedInterest, qualifiedCount);
+
+	return exportInterestReport(records, accountIndexes, expectedInterest, qualifiedCount);
+}
+
 
 /**
  * @brief Dispatches the selected menu transaction to its
@@ -494,16 +1550,18 @@ void showInterestAmount(char* accountName, double balance){
  * @param[in,out] rates       Exchange rates, modified when recording rates.
  */
  
-void transactionSelect(int choice, char *accountName, double *balance, Currency rates[MAX_CURRENCIES]){
+void transactionSelect(int choice, Currency rates[MAX_CURRENCIES],
+                       Transaction records[], int *count,
+                       int maxCount, char *filename){
 	switch(choice){
 		case 1:
-			registerAccountName(accountName);
+			registerAccount(records, count, maxCount, filename);
 			break;
 		case 2:
-			depositAmount(accountName, balance, rates);
+			depositAmount(records, count, maxCount, filename, rates);
 			break;
 		case 3:
-			withdrawAmount(accountName, balance, rates);
+			withdrawAmount(records, count, maxCount, filename, rates);
 			break;
 		case 4:
 			currencyExchange(rates);
@@ -512,8 +1570,11 @@ void transactionSelect(int choice, char *accountName, double *balance, Currency 
 			recordExchangeRates(rates);
 			break;
 		case 6:
-			showInterestAmount(accountName, *balance);
+			showInterestAmount(records, *count);
 			break;
+		case 7:
+			generateReportsMenu(records, count, maxCount, filename);
+			break;			
 		default:
 			printf("ERROR: Invalid selection.\n");
 			break;
@@ -526,7 +1587,7 @@ void transactionSelect(int choice, char *accountName, double *balance, Currency 
  */ 
  
 int main(){
-	
+
 	// +1 so that the rates are no longer zero indexed, which align with user input 1-6. index 0 is a placeholder
 	Currency globalCurrency[MAX_CURRENCIES] = {
 		{"",    -1.00},
@@ -538,17 +1599,28 @@ int main(){
 		{"CNY",  9.00}
 	};
 	
-	char accountName[MAX_NAME_LEN + 1] = {0};
+	static Transaction records[MAX_TRANSACTIONS];
 	int runningFlag = 1;
 	int choice = -1;
-	double balance = 1000.00;
+	int transactionCount = 0;
+	char filename[] = "bank_transactions_test.csv";
+	
+	transactionCount = loadTransactions(filename, records, MAX_TRANSACTIONS);
+	
+	if(transactionCount < 0){
+		printf("Error in loading the transactions.\n");
+		return 1;
+	}
+	
+	printf("Successfully loaded %d transactions.\n", transactionCount);
 	
 	while(runningFlag){
 		printNavMenu();
-		choice = getValidChoice(0, 6);
+		choice = getValidChoice(0, 7);
 		if (choice){
-			transactionSelect(choice, accountName, &balance, globalCurrency);
-			if(choice != 4){
+				transactionSelect(choice, globalCurrency, records,
+								  &transactionCount, MAX_TRANSACTIONS, filename);
+			if(choice != 4 && choice != 7){
 				printf("Back to Main Menu (Y/N): ");
 				runningFlag = getValidYN();
 			}
