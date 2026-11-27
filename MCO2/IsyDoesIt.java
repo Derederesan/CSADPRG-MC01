@@ -1303,9 +1303,8 @@ public class IsyDoesIt
 
             switch (subChoice) {
                 case 1:
-                    // Reload from CSV so any new deposits/withdrawals from cases 1-3 are included
                     transactions.clear();
-                    transactions.addAll(loadTransactions(file)); // replace with your CSV loader method name
+                    transactions.addAll(loadTransactions(file)); 
                     int loadedCount = transactions.size();
 
                     filterIncomplete(transactions);
