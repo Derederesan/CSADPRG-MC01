@@ -1,4 +1,3 @@
-
 /********************
 Last names: Ilagan, Serios, Yardan
 Language: C
@@ -18,132 +17,174 @@ Paradigm(s): Procedural
 #include <math.h>
 #include <time.h>
 
+/** @brief Maximum length that can be given to an account name string. */
 #define MAX_NAME_LEN 63
+
+/** @brief Maximum number of transaction records that can be loaded in memory. */
 #define MAX_TRANSACTIONS 20000
 
 // 7, because index 0 is a placeholder
+/** @brief Maximum size of the global currency array, including index 0 as a placeholder. */
 #define MAX_CURRENCIES 7
 
+/**
+ * @brief Struct that holds the details of a single bank transaction record.
+ */
 typedef struct {
-    char accountName[64];
-    char accountNumber[11];
-    char date[11];
-    char time[9];
-    char currency[4];
-    double amount;
-    char type[11];
-    double currentBalance;
+    char accountName[64];     /**< Name of the account holder. */
+    char accountNumber[11];   /**< 10-digit account number string. */
+    char date[11];            /**< Date of the transaction in DD/MM/YYYY format. */
+    char time[9];             /**< Time of the transaction in HH:MM:SS format. */
+    char currency[4];         /**< Currency code of the transaction. */
+    double amount;            /**< Transaction amount. */
+    char type[11];            /**< Transaction type, deposit or withdrawal. */
+    double currentBalance;    /**< Account balance after the transaction. */
 } Transaction;
 
+/**
+ * @brief Struct that holds the values for both the currency code and exchange rate.
+ */
 typedef struct {
-    char code[4];
-    double rate;
+    char code[4];             /**< Currency code string. ie, USD. */
+    double rate;              /**< PHP-relative exchange rate of the currency. */
 } Currency;
 
+/**
+ * @brief Struct that holds the daily activity details of an account for Report 3.
+ */
 typedef struct {
-	char accountName[64];
-	char accountNumber[11];
-	char date[11];
-	double totalWithdrawalAmounts;
-	int numberOfDeposits;
-	double totalDepositAmounts;
-	double turnoverVelocity;
-	int velocityAvailable;
-	int suspiciousFlag;
+	char accountName[64];          /**< Name of the account holder. */
+	char accountNumber[11];        /**< 10-digit account number string. */
+	char date[11];                 /**< Date of the daily activity. */
+	double totalWithdrawalAmounts; /**< Total withdrawal amount for the day. */
+	int numberOfDeposits;          /**< Number of deposits made for the day. */
+	double totalDepositAmounts;    /**< Total deposit amount for the day. */
+	double turnoverVelocity;       /**< Turnover velocity percentage for the day. */
+	int velocityAvailable;         /**< 1 if total deposits is greater than 0, 0 if N/A. */
+	int suspiciousFlag;            /**< 1 if flagged as Suspicious, 0 if Normal. */
 } DailyActivity;
 
+/**
+ * @brief Struct that holds the privilege tier details of a qualified account for Report 1.
+ */
 typedef struct {
-    char accountName[64];
-    char accountNumber[11];
-    int accountAge;
-    double currentBalance;
-    double averageDailyBalance;
-    char privilegeTier[10];
+    char accountName[64];          /**< Name of the account holder. */
+    char accountNumber[11];        /**< 10-digit account number string. */
+    int accountAge;                /**< Age of the account in days. */
+    double currentBalance;         /**< Latest current balance of the account. */
+    double averageDailyBalance;    /**< Average daily balance of the account for the report month. */
+    char privilegeTier[10];        /**< Privilege tier string: Silver, Gold, or Platinum. */
 } PrivilegeAccount;
 
+/**
+ * @brief Struct that holds the balance depletion details of a watchlist account for Report 4.
+ */
 typedef struct {
-    char accountName[64];
-    char accountNumber[11];
-    double balance30DaysAgo;
-    double currentBalance;
-    double balanceDrop;
-    double depletionRate;
-    char riskLevel[10];
+    char accountName[64];          /**< Name of the account holder. */
+    char accountNumber[11];        /**< 10-digit account number string. */
+    double balance30DaysAgo;       /**< Account balance 30 days before the latest date. */
+    double currentBalance;         /**< Latest current balance of the account. */
+    double balanceDrop;            /**< Difference between balance 30 days ago and current balance. */
+    double depletionRate;          /**< Depletion rate percentage of the account. */
+    char riskLevel[10];            /**< Risk level string: Moderate, High, or Critical. */
 } DepletionAccount;
 
+
 /*
+================================================================
 ===================== FUNCTION PROTOTYPES ======================
+================================================================
 */
 
+// INPUT HANDLING, ERROR VALIDATION
 void cleanInputBuffer();
-int loadTransactions(char *filename, Transaction records[], int maxCount);
-Transaction *findAccount(Transaction records[], int count, char *accountNumber);
-unsigned long long stringToAccountNumber(char *str);
-unsigned long long getNextAccountNumber(Transaction records[], int count);
-int saveTransaction(char *filename, Transaction *record);
-
-void printNavMenu();
-void printExchangeMenu();
-double convertCurrency(double amount, int source, int target, Currency rates[MAX_CURRENCIES]);
-
 int getValidChoice(int lb, int ub);
 int getValidChoiceClean(int lb, int ub);
 double getValidAmount();
 void getValidName(char *nameBuffer, int maxLen);
 int getValidYN();
-
-int validateTransaction(Transaction *record);
-int createAccountTransaction(Transaction *record, unsigned long long number, double deposit);
 int getValidCurrency(Currency rates[MAX_CURRENCIES]);
 
-int registerAccount(Transaction records[], int *count, int maxCount, char *filename);
+// DATE AND TIME HELPER FUNCTIONS
 int setTransactionDateTime(Transaction *record);
+long long getTransactionDateValue(Transaction *record);
+int getDaysInMonth(int month, int year);
+int dateToDayCount(char *date);
 
-int depositAmount(Transaction records[], int *count, int maxCount,
-                  char *filename, Currency rates[MAX_CURRENCIES]);
+// FILE I/O ++ ACCOUNT AND TRANSACTION HELPER FUNCTIONS
+int loadTransactions(char *filename, Transaction records[], int maxCount);
+int saveTransaction(char *filename, Transaction *record);
+int validateTransaction(Transaction *record);
+int createAccountTransaction(Transaction *record, unsigned long long number, double deposit);
+Transaction *findAccount(Transaction records[], int count, char *accountNumber);
+unsigned long long stringToAccountNumber(char *str);
+unsigned long long getNextAccountNumber(Transaction records[], int count);
+int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes[]);
 
-int withdrawAmount(Transaction records[], int *count, int maxCount,
-                   char *filename, Currency rates[MAX_CURRENCIES]);
-
-void currencyExchange(Currency rates[MAX_CURRENCIES]);
-void recordExchangeRates(Currency rates[MAX_CURRENCIES]);
-int showInterestAmount(Transaction records[], int count);
+// PRINTABLE MENUS
+void printNavMenu();
+void printExchangeMenu();
+void printReportMenu();
 
 void transactionSelect(int choice, Currency rates[MAX_CURRENCIES],
                        Transaction records[], int *count,
                        int maxCount, char *filename);
-
-void printReportMenu();
 void generateReportsMenu(Transaction records[], int *count, int maxCount, char *filename);
 
-long long getTransactionDateValue(Transaction *record);
-int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes[]);
-double calculateExpectedInterest(double startingBalance);
-int filterInterestAccounts(Transaction records[], int accountIndexes[], int accountCount, double expectedInterest[]);
-void sortInterestAccounts(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
-int exportInterestReport(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
-int generateInterestReport(Transaction records[], int count);
-int getDailyActivities(Transaction records[], int count, DailyActivity activities[]);
-void calculateRiskFlags(DailyActivity activities[], int activityCount);
-void sortDailyActivities(DailyActivity activities[], int activityCount);
-int exportSuspiciousReport(DailyActivity activities[], int activityCount);
-int generateSuspiciousReport(Transaction records[], int count);
+// BANKING OPERATIONS
+int registerAccount(Transaction records[], int *count, int maxCount, char *filename);
+int depositAmount(Transaction records[], int *count, int maxCount,
+                  char *filename, Currency rates[MAX_CURRENCIES]);
+int withdrawAmount(Transaction records[], int *count, int maxCount,
+                   char *filename, Currency rates[MAX_CURRENCIES]);
+int showInterestAmount(Transaction records[], int count);
 
-int getDaysInMonth(int month, int year);
-int dateToDayCount(char *date);
-double calculateAverageDailyBalance(Transaction records[], int count,
-                                    char *accountNumber, int month, int year);
-void sortPrivilegeAccounts(PrivilegeAccount accounts[], int qualifiedCount);
-int exportPrivilegeReport(PrivilegeAccount accounts[], int qualifiedCount);
-int generatePrivilegeReport(Transaction records[], int count);
+// CURRENCY EXCHANGE
+double convertCurrency(double amount, int source, int target, Currency rates[MAX_CURRENCIES]);
+void currencyExchange(Currency rates[MAX_CURRENCIES]);
+void recordExchangeRates(Currency rates[MAX_CURRENCIES]);
 
-void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount);
-int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount);
-int generateDepletionReport(Transaction records[], int count);
-int generateSummaryJson(Transaction records[], int count);
+	/*
+	===================== REPORTING, ANALYTICS ======================
+	*/
+
+		// Interest Report
+		double calculateExpectedInterest(double startingBalance);
+		int filterInterestAccounts(Transaction records[], int accountIndexes[], int accountCount, double expectedInterest[]);
+		void sortInterestAccounts(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
+		int exportInterestReport(Transaction records[], int accountIndexes[], double expectedInterest[], int qualifiedCount);
+		int generateInterestReport(Transaction records[], int count);
+
+		// Suspicious Activity Report
+		int getDailyActivities(Transaction records[], int count, DailyActivity activities[]);
+		void calculateRiskFlags(DailyActivity activities[], int activityCount);
+		void sortDailyActivities(DailyActivity activities[], int activityCount);
+		int exportSuspiciousReport(DailyActivity activities[], int activityCount);
+		int generateSuspiciousReport(Transaction records[], int count);
+
+		// Privilege Account Report
+		double calculateAverageDailyBalance(Transaction records[], int count,
+											char *accountNumber, int month, int year);
+		void sortPrivilegeAccounts(PrivilegeAccount accounts[], int qualifiedCount);
+		int exportPrivilegeReport(PrivilegeAccount accounts[], int qualifiedCount);
+		int generatePrivilegeReport(Transaction records[], int count);
+
+		// Depletion Account Report
+		void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount);
+		int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount);
+		int generateDepletionReport(Transaction records[], int count);
+
+		// Summary Export
+		int generateSummaryJson(Transaction records[], int count);
+
+	/*
+	===================== REPORTING, ANALYTICS ======================
+	*/
 
 /*
+================================================================
 ===================== FUNCTION PROTOTYPES ======================
+================================================================
 */
 
 /**
@@ -156,6 +197,18 @@ void cleanInputBuffer(){
 	int c;
 	while ((c = getchar()) != '\n' && c != EOF);
 }
+
+/**
+ * @brief Loads and validates PHP transaction records from a CSV file into the records array.
+ *
+ * @param[in]  filename  String containing the CSV filename to be opened.
+ * @param[out] records   Array of Transaction structs that holds the accepted transaction records.
+ * @param[in]  maxCount  Maximum number of accepted transactions that can be loaded.
+ *
+ * @warning Non-PHP rows are filtered out, and invalid rows print an error message with the row number.
+ *
+ * @return The total number of accepted transaction rows, or -1 if the CSV file cannot be opened.
+ */
 
 int loadTransactions(char *filename, Transaction records[], int maxCount){
 	FILE *file;
@@ -254,6 +307,16 @@ int loadTransactions(char *filename, Transaction records[], int maxCount){
 	return i;
 }
 
+/**
+ * @brief Finds the latest transaction record matching a given account number.
+ *
+ * @param[in] records        Array of Transaction structs containing loaded transaction records.
+ * @param[in] count          Total number of transactions in the records array.
+ * @param[in] accountNumber  Account number string to search for.
+ *
+ * @return Pointer to the latest matching Transaction record, or NULL if not found.
+ */
+
 Transaction *findAccount(Transaction records[], int count, char *accountNumber) {
     Transaction *latest = NULL;
     long long latestDate = -1;
@@ -268,6 +331,14 @@ Transaction *findAccount(Transaction records[], int count, char *accountNumber) 
     }
     return latest;
 }
+
+/**
+ * @brief Converts a 10-digit account number string into an unsigned long long value.
+ *
+ * @param[in] str  String containing the account number to be converted.
+ *
+ * @return The converted numeric account number, or 0 if the string is invalid.
+ */
 
 unsigned long long stringToAccountNumber(char *str) {
     unsigned long long number = 0;
@@ -290,6 +361,15 @@ unsigned long long stringToAccountNumber(char *str) {
 
     return number;
 }
+
+/**
+ * @brief Finds the highest existing account number in the records array and calculates the next one.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return The next available account number, or 0 if an invalid account number is found or the limit is reached.
+ */
 
 unsigned long long getNextAccountNumber(Transaction records[], int count){
 	
@@ -320,6 +400,15 @@ unsigned long long getNextAccountNumber(Transaction records[], int count){
 
 	return next;
 }
+
+/**
+ * @brief Saves a single transaction record to the end of the CSV file.
+ *
+ * @param[in] filename  String containing the CSV filename to open.
+ * @param[in] record    Pointer to the Transaction struct to be written to the file.
+ *
+ * @return 1 if saved successfully, 0 if an error occurs while opening, writing, or closing the file.
+ */
 
 int saveTransaction(char *filename, Transaction *record){
     FILE *file;
@@ -576,6 +665,13 @@ int getValidYN(){
     return result;
 }
 
+/**
+ * @brief Validates the fields of a single transaction record.
+ *
+ * @param[in] record  Pointer to the Transaction struct to be validated.
+ *
+ * @return 1 if all fields of the transaction are valid, 0 otherwise.
+ */
 
 int validateTransaction(Transaction *record){
 	int validFlag = 1;
@@ -682,6 +778,17 @@ int validateTransaction(Transaction *record){
 	return validFlag;
 }
 
+/**
+ * @brief Sets up the account number, currency, deposit type, balance, and current date and time
+ *        for a new account transaction record.
+ *
+ * @param[in,out] record   Pointer to the Transaction struct to be filled.
+ * @param[in]     number   Numeric account number to be converted into the 10-digit string.
+ * @param[in]     deposit  Initial deposit amount in PHP.
+ *
+ * @return 1 if created successfully, 0 if setting the date or time fails.
+ */
+
 int createAccountTransaction(Transaction *record, unsigned long long number, double deposit){
     time_t currentTime = time(NULL);
     struct tm *dateTime = localtime(&currentTime);
@@ -764,9 +871,17 @@ int getValidCurrency(Currency rates[MAX_CURRENCIES]){
 }
 
 /**
- * @brief 	Prints the prompt for the user to register account name details. [REQ-0009]
+ * @brief 	Prints the prompt for the user to register account name details and an initial deposit,
+ *          then saves the new account into the records array and CSV file. [REQ-0009]
  *
- * @param[out]    accountName  String to be modified according to the user's input.
+ * @param[in,out] records   Array of Transaction structs that holds all loaded transactions.
+ * @param[in,out] count     Pointer to the total number of loaded transactions.
+ * @param[in]     maxCount  Maximum number of transactions that can be stored in records.
+ * @param[in]     filename  String containing the CSV filename where the new account is saved.
+ *
+ * @post If valid, the new account transaction is saved to the CSV file and added to records.
+ *
+ * @return 1 if registered successfully, 0 if an error occurs or the transaction limit is reached.
  */
 
 
@@ -820,6 +935,13 @@ int registerAccount(Transaction records[], int *count, int maxCount, char *filen
     return registerResult;
 }
 
+/**
+ * @brief Sets the current date and time onto a transaction record.
+ *
+ * @param[out] record  Pointer to the Transaction struct whose date and time will be modified.
+ *
+ * @return 1 if the date and time are set successfully, 0 otherwise.
+ */
 
 int setTransactionDateTime(Transaction *record){
     time_t currentTime = time(NULL);
@@ -842,6 +964,16 @@ int setTransactionDateTime(Transaction *record){
     return 1;
 }
 
+/**
+ * @brief Calculates the turnover velocity and suspicious flag for each daily activity entry.
+ *
+ * @param[in,out] activities     Array of DailyActivity structs to be evaluated and updated.
+ * @param[in]     activityCount  Total number of daily activity entries in the array.
+ *
+ * @post Each DailyActivity entry has its turnover velocity, velocity availability,
+ *       and suspicious flag updated.
+ */
+
 void calculateRiskFlags(DailyActivity activities[], int activityCount){
 	int i = 0;
 
@@ -862,6 +994,15 @@ void calculateRiskFlags(DailyActivity activities[], int activityCount){
 	}
 }
 
+/**
+ * @brief Groups transaction records by account number and date to calculate daily deposit and withdrawal totals.
+ *
+ * @param[in]  records     Array of Transaction structs containing loaded transaction records.
+ * @param[in]  count       Total number of transactions in the records array.
+ * @param[out] activities  Array of DailyActivity structs filled with the grouped daily activity values.
+ *
+ * @return The total number of daily activity entries created.
+ */
 
 int getDailyActivities(Transaction records[], int count, DailyActivity activities[]){
 	int activityCount = 0;
@@ -901,6 +1042,14 @@ int getDailyActivities(Transaction records[], int count, DailyActivity activitie
 	return activityCount;
 }
 
+/**
+ * @brief Sorts the daily activity entries by date, then by suspicious flag, then by account number.
+ *
+ * @param[in,out] activities     Array of DailyActivity structs to be sorted.
+ * @param[in]     activityCount  Total number of daily activity entries in the array.
+ *
+ * @post The activities array is sorted for Report 3 output.
+ */
 
 void sortDailyActivities(DailyActivity activities[], int activityCount){
 	DailyActivity temp;
@@ -943,6 +1092,15 @@ void sortDailyActivities(DailyActivity activities[], int activityCount){
 	}
 }
 
+/**
+ * @brief Generates Report 3 (Suspicious Client Behavior) from the loaded transaction records.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return 1 if Report 3 is generated and exported successfully, 0 otherwise.
+ */
+
 int generateSuspiciousReport(Transaction records[], int count){
 	static DailyActivity activities[MAX_TRANSACTIONS];
 	int activityCount = 0;
@@ -966,12 +1124,16 @@ int generateSuspiciousReport(Transaction records[], int count){
  * @brief Deposits a positive amount into the user's account,
  *        converting foreign currencies into PHP when necessary. [REQ-0004], [REQ-0008]
  *
- * @param[in] accountName   Name of the account holder.
- * @param[in,out] balance   Current account balance.
- * @param[in] rates         Array of currency codes and exchange rates.
+ * @param[in,out] records   Array of Transaction structs that holds all loaded transactions.
+ * @param[in,out] count     Pointer to the total number of loaded transactions.
+ * @param[in]     maxCount  Maximum number of transactions that can be stored in records.
+ * @param[in]     filename  String containing the CSV filename where the deposit is saved.
+ * @param[in]     rates     Array of currency codes and exchange rates.
  *
  * @post The account balance is increased by the value
- *       of the deposited amount.
+ *       of the deposited amount, and the new deposit transaction is saved.
+ *
+ * @return 1 if the deposit succeeds, 0 if an error occurs.
  */
 
 
@@ -1072,14 +1234,18 @@ int depositAmount(Transaction records[], int *count, int maxCount, char *filenam
  * @brief Withdraws an amount from the user's account,
  *        converting foreign currencies into PHP when necessary. [REQ-0005], [REQ-0008]
  *
- * @param[in] accountName   Name of the account holder.
- * @param[in,out] balance   Current account balance.
- * @param[in] rates         Array of currency codes and exchange rates.
+ * @param[in,out] records   Array of Transaction structs that holds all loaded transactions.
+ * @param[in,out] count     Pointer to the total number of loaded transactions.
+ * @param[in]     maxCount  Maximum number of transactions that can be stored in records.
+ * @param[in]     filename  String containing the CSV filename where the withdrawal is saved.
+ * @param[in]     rates     Array of currency codes and exchange rates.
  *
-	 * @post The account balance is decreased by the value
-	 *       of the validated withdrawal amount.
+ * @post The account balance is decreased by the value
+ *       of the validated withdrawal amount, and the new withdrawal transaction is saved.
  *
  * @warning Withdrawals exceeding the available balance are rejected.
+ *
+ * @return 1 if the withdrawal succeeds, 0 if an error occurs.
  */
  
 int withdrawAmount(Transaction records[], int *count, int maxCount,
@@ -1233,7 +1399,8 @@ void currencyExchange(Currency rates[MAX_CURRENCIES]){
 
 /**
  * @brief Records the user's input for a global currency's exchange value. [REQ-0001] [REQ-0002]
- * 
+ *
+ * @param[in,out] rates  Array containing currency codes and exchange rates, modified when a new rate is recorded.
  */
 
 void recordExchangeRates(Currency rates[MAX_CURRENCIES]){
@@ -1262,14 +1429,16 @@ void recordExchangeRates(Currency rates[MAX_CURRENCIES]){
  * @brief Calculates and displays a daily compound-interest projection
  *        using a fixed annual interest rate of 5 percent. [REQ-0006] [REQ-0007]
  *
- * @param[in] accountName  Name of the account holder.
- * @param[in] balance      Starting account balance.
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
  *
  * @note Daily interest is rounded to two decimal places before
  *       being added to the projected balance.
  *
  * @post Displays the daily interest and projected balance
  *       without modifying the actual account balance.
+ *
+ * @return 1 if the interest projection is displayed, 0 if the account is invalid or not found.
  */
 
 int showInterestAmount(Transaction records[], int count){
@@ -1326,6 +1495,15 @@ int showInterestAmount(Transaction records[], int count){
     return 1;
 }
 
+/**
+ * @brief Handles the report generation submenu loop for loading the CSV file and generating all reports.
+ *
+ * @param[in,out] records   Array of Transaction structs that holds all loaded transactions.
+ * @param[in,out] count     Pointer to the total number of loaded transactions.
+ * @param[in]     maxCount  Maximum number of transactions that can be stored in records.
+ * @param[in]     filename  String containing the CSV filename to load from.
+ */
+
 void generateReportsMenu(Transaction records[], int *count, int maxCount, char *filename){
 	int runningFlag = 1;
 	int choice = 0;
@@ -1366,6 +1544,13 @@ void generateReportsMenu(Transaction records[], int *count, int maxCount, char *
 	}
 }
 
+/**
+ * @brief Converts a transaction's date and time strings into a single numeric value for comparison.
+ *
+ * @param[in] record  Pointer to the Transaction struct containing the date and time strings.
+ *
+ * @return A long long value formatted as YYYYMMDDHHMMSS.
+ */
 
 long long getTransactionDateValue(Transaction *record){
 	int dateDay = 0, dateMonth = 0, dateYear = 0;
@@ -1384,6 +1569,16 @@ long long getTransactionDateValue(Transaction *record){
 
 	return dateValue;
 }
+
+/**
+ * @brief Finds the index of the latest transaction record for each unique account number.
+ *
+ * @param[in]  records         Array of Transaction structs containing loaded transaction records.
+ * @param[in]  count           Total number of transactions in the records array.
+ * @param[out] accountIndexes  Array of integers filled with the index of each account's latest transaction.
+ *
+ * @return The total number of unique accounts found.
+ */
 
 int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes[]){
 	static long long accountDates[MAX_TRANSACTIONS];
@@ -1414,6 +1609,17 @@ int getLatestAccountIndexes(Transaction records[], int count, int accountIndexes
 	return accountCount;
 }
 
+/**
+ * @brief Calculates the expected 30-day compound interest for a given starting balance
+ *        using a 5 percent annual interest rate.
+ *
+ * @param[in] startingBalance  Starting account balance in PHP.
+ *
+ * @note Daily interest is rounded to two decimal places before being added to the balance.
+ *
+ * @return The total expected interest after 30 days.
+ */
+
 double calculateExpectedInterest(double startingBalance){
 	double balance = startingBalance;
 	double dailyInterest = 0.0;
@@ -1426,6 +1632,18 @@ double calculateExpectedInterest(double startingBalance){
 
 	return round((balance - startingBalance) * 100.0) / 100.0;
 }
+
+/**
+ * @brief Filters accounts with a current balance of at least PHP 10000.00
+ *        and calculates their expected 30-day interest.
+ *
+ * @param[in]     records           Array of Transaction structs containing loaded transaction records.
+ * @param[in,out] accountIndexes    Array of latest account indexes, modified to hold only qualified indexes.
+ * @param[in]     accountCount      Total number of unique accounts in accountIndexes.
+ * @param[out]    expectedInterest  Array filled with the expected interest of each qualified account.
+ *
+ * @return The total number of qualified accounts.
+ */
 
 int filterInterestAccounts(Transaction records[], int accountIndexes[],
 						   int accountCount, double expectedInterest[]){
@@ -1444,6 +1662,17 @@ int filterInterestAccounts(Transaction records[], int accountIndexes[],
 
 	return qualifiedCount;
 }
+
+/**
+ * @brief Sorts qualified interest accounts by expected interest descending, then by account number.
+ *
+ * @param[in]     records           Array of Transaction structs containing loaded transaction records.
+ * @param[in,out] accountIndexes    Array of qualified account indexes to be sorted.
+ * @param[in,out] expectedInterest  Array of expected interest values to be sorted alongside accountIndexes.
+ * @param[in]     qualifiedCount    Total number of qualified accounts.
+ *
+ * @post The accountIndexes and expectedInterest arrays are sorted for Report 2 output.
+ */
 
 void sortInterestAccounts(Transaction records[], int accountIndexes[],
 						  double expectedInterest[], int qualifiedCount){
@@ -1469,6 +1698,17 @@ void sortInterestAccounts(Transaction records[], int accountIndexes[],
 		}
 	}
 }
+
+/**
+ * @brief Exports Report 2 (Interest Expense Projection) to a CSV file and displays the top rows.
+ *
+ * @param[in] records           Array of Transaction structs containing loaded transaction records.
+ * @param[in] accountIndexes    Array of sorted qualified account indexes.
+ * @param[in] expectedInterest  Array of sorted expected interest values.
+ * @param[in] qualifiedCount    Total number of qualified accounts.
+ *
+ * @return 1 if exported successfully, 0 if creating or saving the CSV fails.
+ */
 
 int exportInterestReport(Transaction records[], int accountIndexes[],
 						 double expectedInterest[], int qualifiedCount){
@@ -1516,6 +1756,14 @@ int exportInterestReport(Transaction records[], int accountIndexes[],
 	return 1;
 }
 
+/**
+ * @brief Exports Report 3 (Suspicious Client Behavior) to a CSV file and displays the top rows.
+ *
+ * @param[in] activities     Array of sorted DailyActivity structs.
+ * @param[in] activityCount  Total number of daily activity entries.
+ *
+ * @return 1 if exported successfully, 0 if creating the CSV fails.
+ */
 
 int exportSuspiciousReport(DailyActivity activities[], int activityCount){
 	FILE *file;
@@ -1592,6 +1840,14 @@ int exportSuspiciousReport(DailyActivity activities[], int activityCount){
 	return 1;
 }
 
+/**
+ * @brief Generates Report 2 (Interest Expense Projection) from the loaded transaction records.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return 1 if Report 2 is generated and exported successfully, 0 otherwise.
+ */
 
 int generateInterestReport(Transaction records[], int count){
 	static int accountIndexes[MAX_TRANSACTIONS];
@@ -1614,6 +1870,14 @@ int generateInterestReport(Transaction records[], int count){
 	return exportInterestReport(records, accountIndexes, expectedInterest, qualifiedCount);
 }
 
+/**
+ * @brief Returns the number of days in a specified month and year, checking for leap years.
+ *
+ * @param[in] month  Month integer from 1 to 12.
+ * @param[in] year   Year integer.
+ *
+ * @return The total number of days in the given month.
+ */
 
 int getDaysInMonth(int month, int year){
     int days[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
@@ -1625,6 +1889,14 @@ int getDaysInMonth(int month, int year){
 
     return days[month - 1];
 }
+
+/**
+ * @brief Converts a date string in DD/MM/YYYY format into a total day count value.
+ *
+ * @param[in] date  Date string in DD/MM/YYYY format.
+ *
+ * @return The total day count integer for the given date.
+ */
 
 int dateToDayCount(char *date){
     int day = 0, month = 0, year = 0;
@@ -1644,6 +1916,18 @@ int dateToDayCount(char *date){
 
     return total + day;
 }
+
+/**
+ * @brief Calculates the average daily balance of an account for a specified month and year.
+ *
+ * @param[in] records        Array of Transaction structs containing loaded transaction records.
+ * @param[in] count          Total number of transactions in the records array.
+ * @param[in] accountNumber  Account number string to evaluate.
+ * @param[in] month          Month integer to evaluate.
+ * @param[in] year           Year integer to evaluate.
+ *
+ * @return The average daily balance for the specified month and year.
+ */
 
 double calculateAverageDailyBalance(Transaction records[], int count,
                                     char *accountNumber, int month, int year){
@@ -1684,6 +1968,15 @@ double calculateAverageDailyBalance(Transaction records[], int count,
     return sumOfBalances / days;
 }
 
+/**
+ * @brief Sorts qualified privilege accounts by average daily balance descending, then by account number.
+ *
+ * @param[in,out] accounts        Array of PrivilegeAccount structs to be sorted.
+ * @param[in]     qualifiedCount  Total number of qualified accounts in the array.
+ *
+ * @post The accounts array is sorted for Report 1 output.
+ */
+
 void sortPrivilegeAccounts(PrivilegeAccount accounts[], int qualifiedCount){
     PrivilegeAccount temp;
     int i = 0, j = 0;
@@ -1700,6 +1993,15 @@ void sortPrivilegeAccounts(PrivilegeAccount accounts[], int qualifiedCount){
         }
     }
 }
+
+/**
+ * @brief Exports Report 1 (Banking Privilege Tiers) to a CSV file and displays the top rows.
+ *
+ * @param[in] accounts        Array of sorted PrivilegeAccount structs.
+ * @param[in] qualifiedCount  Total number of qualified accounts.
+ *
+ * @return 1 if exported successfully, 0 if creating or saving the CSV fails.
+ */
 
 int exportPrivilegeReport(PrivilegeAccount accounts[], int qualifiedCount){
     FILE *file;
@@ -1746,6 +2048,15 @@ int exportPrivilegeReport(PrivilegeAccount accounts[], int qualifiedCount){
     printf("Qualified accounts: %d\n", qualifiedCount);
     return 1;
 }
+
+/**
+ * @brief Generates Report 1 (Banking Privilege Tiers) from the loaded transaction records.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return 1 if Report 1 is generated and exported successfully, 0 otherwise.
+ */
 
 int generatePrivilegeReport(Transaction records[], int count){
     static int accountIndexes[MAX_TRANSACTIONS];
@@ -1837,6 +2148,16 @@ int generatePrivilegeReport(Transaction records[], int count){
     return exportPrivilegeReport(accounts, qualifiedCount);
 }
 
+/**
+ * @brief Sorts depletion watchlist accounts by depletion rate descending,
+ *        then by balance drop descending, then by account number.
+ *
+ * @param[in,out] accounts        Array of DepletionAccount structs to be sorted.
+ * @param[in]     qualifiedCount  Total number of watchlist accounts in the array.
+ *
+ * @post The accounts array is sorted for Report 4 output.
+ */
+
 void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount){
     DepletionAccount temp;
     int i = 0, j = 0;
@@ -1856,6 +2177,15 @@ void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount){
         }
     }
 }
+
+/**
+ * @brief Exports Report 4 (Account Balance Depletion Watchlist) to a CSV file and displays the top rows.
+ *
+ * @param[in] accounts        Array of sorted DepletionAccount structs.
+ * @param[in] qualifiedCount  Total number of watchlist accounts.
+ *
+ * @return 1 if exported successfully, 0 if creating or saving the CSV fails.
+ */
 
 int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount){
     FILE *file;
@@ -1904,6 +2234,15 @@ int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount){
     printf("Watchlist accounts: %d\n", qualifiedCount);
     return 1;
 }
+
+/**
+ * @brief Generates Report 4 (Account Balance Depletion Watchlist) from the loaded transaction records.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return 1 if Report 4 is generated and exported successfully, 0 otherwise.
+ */
 
 int generateDepletionReport(Transaction records[], int count){
     static int accountIndexes[MAX_TRANSACTIONS];
@@ -1995,6 +2334,16 @@ int generateDepletionReport(Transaction records[], int count){
     return exportDepletionReport(accounts, qualifiedCount);
 }
 
+/**
+ * @brief Calculates the summary totals from the loaded transaction records
+ *        and exports them to summary.json.
+ *
+ * @param[in] records  Array of Transaction structs containing loaded transaction records.
+ * @param[in] count    Total number of transactions in the records array.
+ *
+ * @return 1 if summary.json is created and saved successfully, 0 otherwise.
+ */
+
 int generateSummaryJson(Transaction records[], int count){
     static int accountIndexes[MAX_TRANSACTIONS];
     FILE *file;
@@ -2066,10 +2415,12 @@ int generateSummaryJson(Transaction records[], int count){
  * @brief Dispatches the selected menu transaction to its
  *        corresponding function.
  *
- * @param[in] choice          Selected transaction menu option.
- * @param[in,out] accountName Account name, modified during registration.
- * @param[in,out] balance     Account balance, modified by transactions.
- * @param[in,out] rates       Exchange rates, modified when recording rates.
+ * @param[in]     choice    Selected transaction menu option.
+ * @param[in,out] rates     Exchange rates, modified when recording rates.
+ * @param[in,out] records   Array of Transaction structs, modified by transactions and loading.
+ * @param[in,out] count     Pointer to the total number of loaded transactions.
+ * @param[in]     maxCount  Maximum number of transactions that can be stored in records.
+ * @param[in]     filename  String containing the CSV filename used for loading and saving.
  */
  
 void transactionSelect(int choice, Currency rates[MAX_CURRENCIES],
@@ -2105,7 +2456,8 @@ void transactionSelect(int choice, Currency rates[MAX_CURRENCIES],
  
 /**
  * @brief Main program loop, constantly checks for user's valid input to navigate menu.
- * 
+ *
+ * @return 0 when exiting normally, 1 if the transactions fail to load.
  */ 
  
 int main(){
@@ -2153,4 +2505,3 @@ int main(){
 	printf("Exiting..\n");
 	return 0;
 }
-
