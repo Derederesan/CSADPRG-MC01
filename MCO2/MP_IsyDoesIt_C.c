@@ -1,10 +1,24 @@
+
+/********************
+Last names: Ilagan, Serios, Yardan
+Language: C
+Paradigm(s): Procedural
+********************/
+
+/**
+ * @file
+ * @brief C implementation of the Banking and Currency Exchange Application.
+ * @author Alexie Ilagan, Justine Serios, Andre Yardan
+ *
+ * Developed by Team Isy Does It for CSADPRG MCO2.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 
 #define MAX_NAME_LEN 63
-#define MAX_ACCOUNT_NUM 100
 #define MAX_TRANSACTIONS 20000
 
 // 7, because index 0 is a placeholder
@@ -46,6 +60,16 @@ typedef struct {
     double averageDailyBalance;
     char privilegeTier[10];
 } PrivilegeAccount;
+
+typedef struct {
+    char accountName[64];
+    char accountNumber[11];
+    double balance30DaysAgo;
+    double currentBalance;
+    double balanceDrop;
+    double depletionRate;
+    char riskLevel[10];
+} DepletionAccount;
 
 /*
 ===================== FUNCTION PROTOTYPES ======================
@@ -113,23 +137,14 @@ void sortPrivilegeAccounts(PrivilegeAccount accounts[], int qualifiedCount);
 int exportPrivilegeReport(PrivilegeAccount accounts[], int qualifiedCount);
 int generatePrivilegeReport(Transaction records[], int count);
 
+void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount);
+int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount);
+int generateDepletionReport(Transaction records[], int count);
+int generateSummaryJson(Transaction records[], int count);
+
 /*
 ===================== FUNCTION PROTOTYPES ======================
 */
-
-/********************
-Last names: Ilagan, Serios, Yardan
-Language: C
-Paradigm(s): Procedural
-********************/
-
-/**
- * @file
- * @brief C implementation of the Banking and Currency Exchange Application.
- * @author Alexie Ilagan, Justine Serios, Andre Yardan
- *
- * Developed by Team Isy Does It for CSADPRG MCO1.
- */
 
 /**
  * @brief Cleans retained string data in memory.
@@ -1022,7 +1037,12 @@ int depositAmount(Transaction records[], int *count, int maxCount, char *filenam
         strcpy(newTransaction.currency, "PHP");
         strcpy(newTransaction.type, "deposit");
         newTransaction.amount = amountPHP;
-        newTransaction.currentBalance = account->currentBalance + amountPHP;
+
+        double updatedBalance = round((account->currentBalance + amountPHP) * 100.0) / 100.0;
+        if (updatedBalance == 0.0) {
+            updatedBalance = 0.0;
+        }
+        newTransaction.currentBalance = updatedBalance;
 
         if (!setTransactionDateTime(&newTransaction)) {
             status = 0;
@@ -1104,7 +1124,7 @@ int withdrawAmount(Transaction records[], int *count, int maxCount,
         }
     }
 
-	if (status) {
+    if (status) {
         printf("Account Name: %s\n", account->accountName);
         printf("Current Balance: %.2lf\n", account->currentBalance);
 
@@ -1128,7 +1148,12 @@ int withdrawAmount(Transaction records[], int *count, int maxCount,
             strcpy(newTransaction.currency, "PHP");
             strcpy(newTransaction.type, "withdrawal");
             newTransaction.amount = amountPHP;
-            newTransaction.currentBalance = account->currentBalance - amountPHP;
+
+            double updatedBalance = round((account->currentBalance - amountPHP) * 100.0) / 100.0;
+            if (updatedBalance == 0.0) {
+                updatedBalance = 0.0;
+            }
+            newTransaction.currentBalance = updatedBalance;
 
             if (!setTransactionDateTime(&newTransaction)) {
                 status = 0;
@@ -1142,7 +1167,7 @@ int withdrawAmount(Transaction records[], int *count, int maxCount,
             status = 0;
         }
     }
-	
+
     if (status) {
         records[*count] = newTransaction;
         (*count)++;
@@ -1330,6 +1355,8 @@ void generateReportsMenu(Transaction records[], int *count, int maxCount, char *
 					generatePrivilegeReport(records, *count);
 					generateInterestReport(records, *count);
 					generateSuspiciousReport(records, *count);
+					generateDepletionReport(records, *count);
+					generateSummaryJson(records, *count);
 				}
 				break;
 			case 0:
@@ -1808,6 +1835,230 @@ int generatePrivilegeReport(Transaction records[], int count){
     sortPrivilegeAccounts(accounts, qualifiedCount);
 
     return exportPrivilegeReport(accounts, qualifiedCount);
+}
+
+void sortDepletionAccounts(DepletionAccount accounts[], int qualifiedCount){
+    DepletionAccount temp;
+    int i = 0, j = 0;
+
+    for(i = 0; i < qualifiedCount; i++){
+        for(j = i + 1; j < qualifiedCount; j++){
+            if(accounts[j].depletionRate > accounts[i].depletionRate ||
+               (accounts[j].depletionRate == accounts[i].depletionRate &&
+                accounts[j].balanceDrop > accounts[i].balanceDrop) ||
+               (accounts[j].depletionRate == accounts[i].depletionRate &&
+                accounts[j].balanceDrop == accounts[i].balanceDrop &&
+                strcmp(accounts[j].accountNumber, accounts[i].accountNumber) < 0)){
+                temp = accounts[i];
+                accounts[i] = accounts[j];
+                accounts[j] = temp;
+            }
+        }
+    }
+}
+
+int exportDepletionReport(DepletionAccount accounts[], int qualifiedCount){
+    FILE *file;
+    int i = 0;
+
+    file = fopen("report4_balance_depletion_watchlist.csv", "w");
+
+    if(file == NULL){
+        printf("Cannot create Report 4 CSV.\n");
+        return 0;
+    }
+
+    fprintf(file, "AccountName,Balance30DaysAgo,CurrentBalance,BalanceDrop,DepletionRate (%%),RiskLevel\n");
+
+    printf("\nReport 4: Account Balance Depletion Watchlist\n");
+    printf("%-24s %-18s %-16s %-14s %-18s %-10s\n",
+           "AccountName", "Balance30DaysAgo", "CurrentBalance",
+           "BalanceDrop", "DepletionRate (%)", "RiskLevel");
+
+    for(i = 0; i < qualifiedCount; i++){
+        fprintf(file, "%s,%.2f,%.2f,%.2f,%.2f,%s\n",
+                accounts[i].accountName,
+                accounts[i].balance30DaysAgo,
+                accounts[i].currentBalance,
+                accounts[i].balanceDrop,
+                accounts[i].depletionRate,
+                accounts[i].riskLevel);
+
+        if(i < 2){
+            printf("%-24s %-18.2f %-16.2f %-14.2f %-18.2f %-10s\n",
+                   accounts[i].accountName,
+                   accounts[i].balance30DaysAgo,
+                   accounts[i].currentBalance,
+                   accounts[i].balanceDrop,
+                   accounts[i].depletionRate,
+                   accounts[i].riskLevel);
+        }
+    }
+
+    if(fclose(file) != 0){
+        printf("Error saving Report 4 CSV.\n");
+        return 0;
+    }
+
+    printf("(Full table exported to report4_balance_depletion_watchlist.csv)\n");
+    printf("Watchlist accounts: %d\n", qualifiedCount);
+    return 1;
+}
+
+int generateDepletionReport(Transaction records[], int count){
+    static int accountIndexes[MAX_TRANSACTIONS];
+    static DepletionAccount accounts[MAX_TRANSACTIONS];
+    int accountCount = 0;
+    int qualifiedCount = 0;
+    int i = 0, j = 0;
+    int latestIndex = 0;
+    int referenceDay = 0;
+    int cutoffDay = 0;
+    int recordDay = 0;
+    int hasPriorBalance = 0;
+    double balance30DaysAgo = 0.0;
+    double balanceDrop = 0.0;
+    double depletionRate = 0.0;
+    long long latestDate = -1;
+    long long transactionDate = 0;
+    long long priorDate = -1;
+    Transaction *account;
+
+    if(count <= 0 || count > MAX_TRANSACTIONS){
+        printf("No valid transactions available.\n");
+        return 0;
+    }
+
+    for(i = 0; i < count; i++){
+        transactionDate = getTransactionDateValue(records + i);
+
+        if(transactionDate >= latestDate){
+            latestDate = transactionDate;
+            latestIndex = i;
+        }
+    }
+
+    referenceDay = dateToDayCount(records[latestIndex].date);
+    cutoffDay = referenceDay - 30;
+
+    accountCount = getLatestAccountIndexes(records, count, accountIndexes);
+
+    for(i = 0; i < accountCount; i++){
+        account = records + accountIndexes[i];
+        hasPriorBalance = 0;
+        priorDate = -1;
+        balance30DaysAgo = 0.0;
+
+        for(j = 0; j < count; j++){
+            if(strcmp(records[j].accountNumber, account->accountNumber) == 0){
+                recordDay = dateToDayCount(records[j].date);
+
+                if(recordDay <= cutoffDay){
+                    transactionDate = getTransactionDateValue(records + j);
+
+                    if(!hasPriorBalance || transactionDate >= priorDate){
+                        hasPriorBalance = 1;
+                        priorDate = transactionDate;
+                        balance30DaysAgo = records[j].currentBalance;
+                    }
+                }
+            }
+        }
+
+        if(hasPriorBalance && balance30DaysAgo > 0.0){
+            balanceDrop = balance30DaysAgo - account->currentBalance;
+            depletionRate = (balanceDrop / balance30DaysAgo) * 100.0;
+
+            if(depletionRate >= 10.0){
+                strcpy(accounts[qualifiedCount].accountName, account->accountName);
+                strcpy(accounts[qualifiedCount].accountNumber, account->accountNumber);
+                accounts[qualifiedCount].balance30DaysAgo = balance30DaysAgo;
+                accounts[qualifiedCount].currentBalance = account->currentBalance;
+                accounts[qualifiedCount].balanceDrop = balanceDrop;
+                accounts[qualifiedCount].depletionRate = depletionRate;
+
+                if(depletionRate >= 40.0){
+                    strcpy(accounts[qualifiedCount].riskLevel, "Critical");
+                } else if(depletionRate >= 25.0){
+                    strcpy(accounts[qualifiedCount].riskLevel, "High");
+                } else {
+                    strcpy(accounts[qualifiedCount].riskLevel, "Moderate");
+                }
+
+                qualifiedCount++;
+            }
+        }
+    }
+
+    sortDepletionAccounts(accounts, qualifiedCount);
+
+    return exportDepletionReport(accounts, qualifiedCount);
+}
+
+int generateSummaryJson(Transaction records[], int count){
+    static int accountIndexes[MAX_TRANSACTIONS];
+    FILE *file;
+    Transaction *account;
+    int accountCount = 0;
+    int i = 0;
+    double totalDeposits = 0.0;
+    double totalWithdrawals = 0.0;
+    double totalBalance = 0.0;
+    double totalInterestExpense = 0.0;
+
+    if(count <= 0 || count > MAX_TRANSACTIONS){
+        printf("No valid transactions available.\n");
+        return 0;
+    }
+
+    for(i = 0; i < count; i++){
+        if(strcmp(records[i].type, "deposit") == 0){
+            totalDeposits += records[i].amount;
+        } else if(strcmp(records[i].type, "withdrawal") == 0){
+            totalWithdrawals += records[i].amount;
+        }
+    }
+
+    accountCount = getLatestAccountIndexes(records, count, accountIndexes);
+
+    for(i = 0; i < accountCount; i++){
+        account = records + accountIndexes[i];
+        totalBalance += account->currentBalance;
+
+        if(account->currentBalance >= 10000.00){
+            totalInterestExpense += calculateExpectedInterest(account->currentBalance);
+        }
+    }
+
+    file = fopen("summary.json", "w");
+
+    if(file == NULL){
+        printf("Cannot create summary.json.\n");
+        return 0;
+    }
+
+    fprintf(file,
+            "{\"total_accounts\": %d, \"total_deposits\": %.2f, \"total_withdrawals\": %.2f, \"total_balance\": %.2f, \"total_interest_expense\": %.2f}\n",
+            accountCount,
+            totalDeposits,
+            totalWithdrawals,
+            totalBalance,
+            totalInterestExpense);
+
+    if(fclose(file) != 0){
+        printf("Error saving summary.json.\n");
+        return 0;
+    }
+
+    printf("\nSummary State (summary.json):\n");
+    printf("{\"total_accounts\": %d, \"total_deposits\": %.2f, \"total_withdrawals\": %.2f, \"total_balance\": %.2f, \"total_interest_expense\": %.2f}\n",
+           accountCount,
+           totalDeposits,
+           totalWithdrawals,
+           totalBalance,
+           totalInterestExpense);
+
+    return 1;
 }
 
 
